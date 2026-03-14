@@ -2,7 +2,7 @@
 
 | Student's name | SCIPER |
 | -------------- | ------ |
-| | |
+| Alexandre Goumaz | 333934 |
 | | |
 |Nayan Adani |326841 |
 
