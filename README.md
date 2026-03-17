@@ -3,8 +3,8 @@
 | Student's name | SCIPER |
 | -------------- | ------ |
 | Alexandre Goumaz | 333934 |
-| | |
-|Nayan Adani |326841 |
+| Mathieu Senent | 362767 |
+| Nayan Adani |326841 |
 
 [Milestone 1](#milestone-1) • [Milestone 2](#milestone-2) • [Milestone 3](#milestone-3)
 
