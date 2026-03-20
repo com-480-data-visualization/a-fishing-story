@@ -49,10 +49,17 @@ Invisible Borders: Mapping Global Fishing Effort between Sovereignty and the Hig
 
 
 > - What others have already done with the data?
->Most projects using Global Fishing Watch data, including their own interactive map, focus on global heatmaps of fishing density or tracking individual vessels to detect illegal activities. Researchers typically use this data to quantify the environmental impact of industrial fishing on a global scale.
+
+Most projects using Global Fishing Watch data, including their own interactive map, focus on global heatmaps of fishing density or tracking individual vessels to detect illegal activities. Researchers typically use this data to quantify the environmental impact of industrial fishing on a global scale.
+
 > - Why is your approach original?
->Our approach is unique because it shifts the focus from "where" to "under whose authority". By performing a spatial join with Marine Regions' EEZ polygons, we categorize fishing effort into three distinct geopolitical zones: Domestic, Foreign Incursion, and High Seas. This allows us to visualize the export of industrial fishing pressure across sovereign borders, a perspective rarely highlighted in standard density maps.
+
+Our approach is unique because it shifts the focus from "where" to "under whose authority". By performing a spatial join with Marine Regions' EEZ polygons, we categorize fishing effort into three distinct geopolitical zones: Domestic, Foreign Incursion, and High Seas. This allows us to visualize the export of industrial fishing pressure across sovereign borders, a perspective rarely highlighted in standard density maps.
+
 > - What source of inspiration do you take? Visualizations that you found on other websites or magazines (might be unrelated to your data).
+
+Global Fishing Watch Map
+
 > - In case you are using a dataset that you have already explored in another context (ML or ADA course, semester project...), you are required to share the report of that work to outline the differences with the submission for this class.
 
 ## Milestone 2 (17th April, 5pm)
