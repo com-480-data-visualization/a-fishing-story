@@ -51,6 +51,10 @@ The *AIS Apparent Fishing Effort* dataset has data spanning from 2012 to 2024, i
 We chose to focus on the data spanning from 2020 to 2024 as an initial effort. The raw format used in the dataset is CSV, which is ill-suited in this case, as the dataset is composed of close to 2 billions records for ~93GB.
 Our first step has been to convert the data from CSV format to [parquet](https://parquet.apache.org) format, this was done in [data_processing.ipynb](notebooks/data_processing.ipynb), with results described in [data-processing.md](data-processing.md).
 
+#### Data Exploration
+
+We did data exploration in [explore.ipynb](notebooks/explore.ipynb).
+
 ### Related work
 
 > - What others have already done with the data?
