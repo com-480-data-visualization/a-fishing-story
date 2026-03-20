@@ -24,7 +24,7 @@ Please, fill the following sections about your project.
 > Hint: some good pointers for finding quality publicly available datasets ([Google dataset search](https://datasetsearch.research.google.com/), [Kaggle](https://www.kaggle.com/datasets), [OpenSwissData](https://opendata.swiss/en/), [SNAP](https://snap.stanford.edu/data/) and [FiveThirtyEight](https://data.fivethirtyeight.com/)).
 
 For this project, we are using two data sources to ensure the reliability of our analysis.
-1. Global Fishing Watch: This dataset provides information on fishing vessel activity detected via the Automatic Identification System (AIS).
+1. [Global Fishing Watch](https://globalfishingwatch.org): The dataset *AIS Apparent Fishing Effort*, this dataset provides information on fishing vessel activity detected via the Automatic Identification System (AIS).
 Content: Geographical coordinates (lat, lon), fishing time (fishing_hours), vessel flag (flag) and gear type (geartype).
 Quality: The data is of high quality and already aggregated by grid cells (e.g. 0.1°), which facilitates large-scale visualisation.
 2. Marine Regions: We use the global maritime zones database to obtain the boundaries of Exclusive Economic Zones (EEZs).
@@ -45,12 +45,19 @@ Invisible Borders: Mapping Global Fishing Effort between Sovereignty and the Hig
 > Pre-processing of the data set you chose
 > - Show some basic statistics and get insights about the data
 
-### Related work
+#### Pre-processing
 
+The *AIS Apparent Fishing Effort* dataset has data spanning from 2012 to 2024, it has 3 types of data: daily & monthly apparent fishing effort, as well as daily [MMSI](https://en.wikipedia.org/wiki/Maritime_Mobile_Service_Identity) data. This represent a very large amount of data.
+We chose to focus on the data spanning from 2020 to 2024 as an initial effort. The raw format used in the dataset is CSV, which is ill-suited in this case, as the dataset is composed of close to 2 billions records for ~93GB.
+Our first step has been to convert the data from CSV format to [parquet](https://parquet.apache.org) format, this was done in [data_processing.ipynb](notebooks/data_processing.ipynb), with results described in [data-processing.md](data-processing.md).
+
+### Related work
 
 > - What others have already done with the data?
 
 Most projects using Global Fishing Watch data, including their own interactive map, focus on global heatmaps of fishing density or tracking individual vessels to detect illegal activities. Researchers typically use this data to quantify the environmental impact of industrial fishing on a global scale.
+
+[Global Fishing Watch Publications](https://globalfishingwatch.org/publications/)
 
 > - Why is your approach original?
 
@@ -58,7 +65,8 @@ Our approach is unique because it shifts the focus from "where" to "under whose 
 
 > - What source of inspiration do you take? Visualizations that you found on other websites or magazines (might be unrelated to your data).
 
-Global Fishing Watch Map
+* [Global Fishing Watch Map](https://globalfishingwatch.org/map/index)
+* [MarineTraffic Map](https://www.marinetraffic.com/en/ais/home/centerx:30.9/centery:11.4/zoom:3)
 
 > - In case you are using a dataset that you have already explored in another context (ML or ADA course, semester project...), you are required to share the report of that work to outline the differences with the submission for this class.
 
