@@ -35,6 +35,25 @@ export function fishingColor(value: number, max: number): [number, number, numbe
   ]
 }
 
+const FLAG_COLORS: [number, number, number][] = [
+  [220, 50,  50 ],  // red
+  [50,  180, 220],  // cyan
+  [50,  220, 100],  // green
+  [220, 160, 50 ],  // orange
+  [180, 50,  220],  // purple
+]
+
+export function flagColor(flagIndex: number, value: number, max: number): [number, number, number, number] {
+  const t = Math.min(value / max, 1)
+  const [r, g, b] = FLAG_COLORS[flagIndex % FLAG_COLORS.length]
+  return [
+    Math.round(r * t),
+    Math.round(g * t),
+    Math.round(b * t),
+    Math.round(50 + t * 180),
+  ]
+}
+
 export function nextDay(date: string): string {
   const d = new Date(date)
   d.setDate(d.getDate() + 1)
@@ -50,5 +69,10 @@ export function computeBBox(
   if (!width || !height) return undefined
   const vp = new WebMercatorViewport({ width, height, ...viewState })
   const [lon_min, lat_min, lon_max, lat_max] = vp.getBounds()
-  return { lat_min, lat_max, lon_min, lon_max }
+  return {
+    lat_min: Math.max(lat_min, -90),
+    lat_max: Math.min(lat_max, 90),
+    lon_min: Math.max(lon_min, -180),
+    lon_max: Math.min(lon_max, 180),
+  }
 }

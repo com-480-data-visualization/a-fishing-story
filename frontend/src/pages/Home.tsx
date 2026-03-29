@@ -9,7 +9,7 @@ const REPLAY_DATE_END = '2023-02-28'
 
 export default function Home() {
   const { data, viewState, resolution, mode, containerRef, onViewStateChange, startReplay, stopReplay } =
-    useMapState(INITIAL_DATE, INITIAL_VIEW)
+    useMapState(INITIAL_DATE, INITIAL_VIEW, [])
 
   const isReplay = mode.type === 'replay'
 
