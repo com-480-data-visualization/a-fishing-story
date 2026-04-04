@@ -1,5 +1,6 @@
 import io
 from typing import Annotated
+import datetime
 
 import pyarrow.ipc as ipc
 from fastapi import APIRouter, Query
@@ -58,6 +59,23 @@ def get_daily_range(params: Annotated[RangeParams, Query()]) -> Response:
     print(f"[range] {params.date_start}..{params.date_end} res={params.resolution} rows={table.num_rows} payload={len(payload)/1e6:.2f}MB")
 
     return Response(content=payload, media_type=ARROW_MEDIA_TYPE)
+
+
+@router.get("/chart")
+def get_chart(
+    date: str = Query(...),
+    west: float = Query(...),
+    east: float = Query(...),
+    south: float = Query(...),
+    north: float = Query(...),
+) -> dict:
+    return Database.query_chart(
+        date=datetime.date.fromisoformat(date),
+        west=west,
+        east=east,
+        south=south,
+        north=north,
+    )
 
 
 @router.get("/meta")

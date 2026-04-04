@@ -18,14 +18,35 @@ const TAIWAN_BOUNDS = {
   maxLat: 29.0,
 }
 
+type Bounds = {
+  west: number
+  east: number
+  south: number
+  north: number
+}
+
 interface MapViewProps {
   data: Map<string, FishingCell[]>
   viewState: MapViewState
   resolution: number
   containerRef: RefObject<HTMLDivElement | null>
   onViewStateChange: (vs: MapViewState) => void
+  onBoundsChange?: (bounds: Bounds) => void
   locked?: boolean
   onSouthChinaSeaClick?: () => void
+}
+
+function computeBounds(viewState: MapViewState): Bounds {
+  // Approximation simple, suffisante pour commencer
+  const lonSpan = 360 / Math.pow(2, viewState.zoom)
+  const latSpan = 170 / Math.pow(2, viewState.zoom)
+
+  return {
+    west: viewState.longitude - lonSpan / 2,
+    east: viewState.longitude + lonSpan / 2,
+    south: viewState.latitude - latSpan / 2,
+    north: viewState.latitude + latSpan / 2,
+  }
 }
 
 export default function MapView({
@@ -34,6 +55,7 @@ export default function MapView({
   resolution,
   containerRef,
   onViewStateChange,
+  onBoundsChange,
   locked,
   onSouthChinaSeaClick,
 }: MapViewProps) {
@@ -93,18 +115,25 @@ export default function MapView({
     <div ref={containerRef} style={{ width: '100%', height: '100%', position: 'relative' }}>
       <DeckGL
         viewState={viewState}
-        onViewStateChange={({ viewState: vs }) => onViewStateChange(vs as MapViewState)}
+        onViewStateChange={({ viewState: vs }) => {
+          const nextViewState = vs as MapViewState
+          onViewStateChange(nextViewState)
+          onBoundsChange?.(computeBounds(nextViewState))
+        }}
         onClick={(info) => {
           if (info.layer?.id === 'taiwan-rectangle') {
             onSouthChinaSeaClick?.()
-            onViewStateChange({
+
+            const nextViewState = {
               ...viewState,
               longitude: 118.75,
               latitude: 18.5,
               zoom: 5,
               transitionDuration: 1200,
-            } as MapViewState)
-            
+            } as MapViewState
+
+            onViewStateChange(nextViewState)
+            onBoundsChange?.(computeBounds(nextViewState))
           }
         }}
         controller={!locked}

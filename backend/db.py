@@ -86,6 +86,58 @@ class Database:
         """
 
         return cls._conn().execute(sql, params).fetch_arrow_table()
+    
+    @classmethod
+    def query_chart(
+        cls,
+        date: datetime.date,
+        west: float,
+        east: float,
+        south: float,
+        north: float,
+    ) -> dict:
+        """
+        Return the share of boats by flag inside the current viewport for one day.
+        Uses mmsi_present as a proxy for number of boats.
+        """
+        parquet_path = DAILY_PARQUET_DIR / f"fleet-daily-{date.strftime('%Y-%m')}.parquet"
+
+        sql = f"""
+            SELECT
+                flag AS label,
+                SUM(mmsi_present)::DOUBLE AS value
+            FROM read_parquet('{parquet_path}')
+            WHERE date = ?
+            AND cell_ll_lon BETWEEN ? AND ?
+            AND cell_ll_lat BETWEEN ? AND ?
+            AND flag IS NOT NULL
+            GROUP BY flag
+            HAVING SUM(mmsi_present) > 0
+            ORDER BY value DESC
+        """
+
+        params = [
+            date.isoformat(),
+            west, east,
+            south, north,
+        ]
+
+        rows = cls._conn().execute(sql, params).fetchall()
+
+        if not rows:
+            return {"data": []}
+
+        total = sum(row[1] for row in rows)
+
+        data = [
+            {
+                "label": row[0],
+                "value": round(100.0 * row[1] / total, 2),
+            }
+            for row in rows
+        ]
+
+        return {"data": data}
 
     @classmethod
     def query_range(
