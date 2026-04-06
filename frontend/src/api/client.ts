@@ -20,7 +20,7 @@ async function requestRaw(path: string): Promise<Response> {
 }
 
 export const api = {
-  get: <T>(path: string) => request<T>(path),
+  get: <T>(path: string, signal?: AbortSignal) => request<T>(path, { signal }),
   getRaw: (path: string) => requestRaw(path),
   post: <T>(path: string, body: unknown) =>
     request<T>(path, { method: 'POST', body: JSON.stringify(body) }),

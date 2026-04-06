@@ -85,6 +85,10 @@ export function useMapState(initialDate: string, initialViewState: MapViewState,
     resolution: currentResolution,
     mode: state.mode,
     containerRef,
+    currentDate:
+      state.mode.type === 'daily'
+        ? state.mode.date
+        : (replayCurrentDate ?? replayDateStart ?? initialDate),
     onViewStateChange: (vs: MapViewState) => dispatch({ type: 'SET_VIEW_STATE', viewState: vs }),
     startReplay: (dateStart: string, dateEnd: string) =>
       dispatch({ type: 'START_REPLAY', dateStart, dateEnd }),

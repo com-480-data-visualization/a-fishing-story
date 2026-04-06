@@ -7,6 +7,8 @@ from pathlib import Path
 
 DATA_DIR = Path("data")
 DAILY_PARQUET_DIR = DATA_DIR / "parquet" / "daily"
+DAILY_EEZ_PARQUET_DIR = DATA_DIR / "parquet" / "daily_with_eez"
+MONTHLY_PARQUET_DIR = DATA_DIR / "parquet" / "monthly"
 META_CACHE = DATA_DIR / "meta.json"
 
 _local = threading.local()
@@ -140,6 +142,79 @@ class Database:
         return {"data": data}
 
     @classmethod
+    def query_illegal_fishing_chart(
+        cls,
+        date: datetime.date,
+        west: float,
+        east: float,
+        south: float,
+        north: float,
+    ) -> dict:
+        """
+        Return the top 5 flags whose vessels are most frequently fishing inside
+        a foreign EEZ (flag != eez_sovereign).  For each flag return:
+          - label: the flag code
+          - illegal_count: absolute number of illegal vessel-presence records
+          - total_count:   total vessel-presence records for that flag
+          - value:         percentage of illegal records (0-100)
+        """
+        parquet_path = DAILY_EEZ_PARQUET_DIR / f"fleet-daily-{date.strftime('%Y-%m')}.parquet"
+
+        # eez_iso is an ISO-3 code (same format as flag).
+        # eez_iso = 'INT' means international waters — not inside any country's EEZ.
+        # A vessel is fishing illegally when it is inside another country's EEZ:
+        #   eez_iso IS NOT NULL AND eez_iso != 'INT' AND flag != eez_iso
+        sql = f"""
+            WITH per_flag AS (
+                SELECT
+                    flag,
+                    SUM(mmsi_present)::DOUBLE                                        AS total_count,
+                    SUM(CASE
+                            WHEN eez_iso IS NOT NULL
+                             AND eez_iso != 'INT'
+                             AND flag != eez_iso
+                            THEN mmsi_present
+                            ELSE 0
+                        END)::DOUBLE                                                 AS illegal_count
+                FROM read_parquet('{parquet_path}')
+                WHERE date = ?
+                  AND cell_ll_lon BETWEEN ? AND ?
+                  AND cell_ll_lat BETWEEN ? AND ?
+                  AND flag IS NOT NULL
+                GROUP BY flag
+                HAVING SUM(mmsi_present) > 0
+            )
+            SELECT
+                flag                                            AS label,
+                illegal_count,
+                total_count,
+                ROUND(100.0 * illegal_count / total_count, 2)  AS value
+            FROM per_flag
+            WHERE illegal_count > 0
+            ORDER BY illegal_count DESC
+            LIMIT 5
+        """
+
+        params = [date.isoformat(), west, east, south, north]
+
+        rows = cls._conn().execute(sql, params).fetchall()
+
+        if not rows:
+            return {"data": []}
+
+        data = [
+            {
+                "label": row[0],
+                "illegal_count": int(row[1]),
+                "total_count": int(row[2]),
+                "value": row[3],
+            }
+            for row in rows
+        ]
+
+        return {"data": data}
+
+    @classmethod
     def query_range(
         cls,
         date_start: datetime.date,
@@ -213,6 +288,44 @@ class Database:
         """
 
         return cls._conn().execute(sql, params).fetch_arrow_table()
+
+    @classmethod
+    def query_timeseries_chart(
+        cls,
+        west: float,
+        east: float,
+        south: float,
+        north: float,
+    ) -> dict:
+        """
+        Return monthly fishing activity across all available years for the
+        current viewport.  Uses mmsi_present as a proxy for vessel count.
+        """
+        parquet_glob = str(MONTHLY_PARQUET_DIR / "*.parquet")
+
+        sql = f"""
+            SELECT
+                year::INTEGER   AS year,
+                month::INTEGER  AS month,
+                SUM(mmsi_present)::BIGINT AS vessel_count
+            FROM read_parquet('{parquet_glob}')
+            WHERE cell_ll_lon BETWEEN ? AND ?
+              AND cell_ll_lat BETWEEN ? AND ?
+            GROUP BY year, month
+            ORDER BY year, month
+        """
+
+        rows = cls._conn().execute(sql, [west, east, south, north]).fetchall()
+
+        if not rows:
+            return {"data": []}
+
+        data = [
+            {"year": int(row[0]), "month": int(row[1]), "vessel_count": int(row[2])}
+            for row in rows
+        ]
+
+        return {"data": data}
 
     @classmethod
     def query_meta(cls) -> dict:

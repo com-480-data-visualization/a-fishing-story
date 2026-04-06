@@ -100,3 +100,57 @@ export async function fetchFishingRange(
 export function fetchFishingMeta(): Promise<FishingMeta> {
   return api.get<FishingMeta>('/api/fishing/meta')
 }
+
+export interface ChartItem {
+  label: string
+  value: number
+}
+
+export interface IllegalChartItem {
+  label: string
+  illegal_count: number
+  total_count: number
+  value: number
+}
+
+export interface TimeSeriesItem {
+  year: number
+  month: number
+  vessel_count: number
+}
+
+function bboxToWestEastSouthNorth(bbox: BBox) {
+  return new URLSearchParams({
+    west:  String(bbox.lon_min),
+    east:  String(bbox.lon_max),
+    south: String(bbox.lat_min),
+    north: String(bbox.lat_max),
+  })
+}
+
+export function fetchFishingChart(
+  date: string,
+  bbox: BBox,
+  signal?: AbortSignal,
+): Promise<{ data: ChartItem[] }> {
+  const params = bboxToWestEastSouthNorth(bbox)
+  params.set('date', date)
+  return api.get(`/api/fishing/chart?${params}`, signal)
+}
+
+export function fetchIllegalFishingChart(
+  date: string,
+  bbox: BBox,
+  signal?: AbortSignal,
+): Promise<{ data: IllegalChartItem[] }> {
+  const params = bboxToWestEastSouthNorth(bbox)
+  params.set('date', date)
+  return api.get(`/api/fishing/chart/illegal-fishing?${params}`, signal)
+}
+
+export function fetchTimeSeriesChart(
+  bbox: BBox,
+  signal?: AbortSignal,
+): Promise<{ data: TimeSeriesItem[] }> {
+  return api.get(`/api/fishing/chart/timeseries?${bboxToWestEastSouthNorth(bbox)}`, signal)
+}

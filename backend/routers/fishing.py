@@ -78,6 +78,38 @@ def get_chart(
     )
 
 
+@router.get("/chart/illegal-fishing")
+def get_illegal_fishing_chart(
+    date: str = Query(...),
+    west: float = Query(...),
+    east: float = Query(...),
+    south: float = Query(...),
+    north: float = Query(...),
+) -> dict:
+    return Database.query_illegal_fishing_chart(
+        date=datetime.date.fromisoformat(date),
+        west=west,
+        east=east,
+        south=south,
+        north=north,
+    )
+
+
+@router.get("/chart/timeseries")
+def get_timeseries_chart(
+    west: float = Query(...),
+    east: float = Query(...),
+    south: float = Query(...),
+    north: float = Query(...),
+) -> dict:
+    return Database.query_timeseries_chart(
+        west=west,
+        east=east,
+        south=south,
+        north=north,
+    )
+
+
 @router.get("/meta")
 def get_meta() -> dict:
     return Database.query_meta()
