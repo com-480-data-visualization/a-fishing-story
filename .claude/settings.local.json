@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -c ':*)",
+      "Bash(npx tsc:*)",
+      "Bash(python3:*)",
+      "Bash(npx vite:*)",
+      "Bash(conda activate:*)",
+      "Bash(conda run -n fishing python3 -c ':*)",
+      "Bash(conda run:*)",
+      "Bash(echo \"EXIT:$?\")"
+    ]
+  }
+}
