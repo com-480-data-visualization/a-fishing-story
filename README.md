@@ -106,18 +106,22 @@ Our target audience includes the general public, journalists, and anyone interes
 
 ## Sketch of the Final Visualization
 
+
 The final interface will contain the following elements:
 
 - **Landing page**  
   A short introduction presenting the topic and the purpose of the project.
+  <img width="1235" height="775" alt="Image" src="https://github.com/user-attachments/assets/e3b89a1e-e5eb-4367-ad7c-5e4e58ae3966" />
 
-- **Main map view**  
+- **Main map view**
+  <img width="1440" height="778" alt="Image" src="https://github.com/user-attachments/assets/1a3c2cd2-de96-4f06-87f1-35f215043532" />
   A world map showing fishing vessel activity, overlaid with **EEZ boundaries** colored by country. Users can zoom and pan to explore different regions.
 
 - **Fishing activity layer**  
   Points or heatmap representing vessel activity on top of the EEZ map.
 
-- **Interactive points of interest**  
+- **Interactive points of interest**
+  <img width="1438" height="774" alt="Image" src="https://github.com/user-attachments/assets/2bde1f22-d2b7-457f-9be6-47c7b87b4d78" />
   Blinking markers placed on important maritime regions. When clicked, they trigger a zoom and display explanatory text about geopolitical or economic significance.
 
 - **Dynamic charts linked to the map view**
