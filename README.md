@@ -76,7 +76,97 @@ Our approach is unique because it shifts the focus from "where" to "under whose 
 
 ## Milestone 2 (17th April, 5pm)
 
-**10% of the final grade**
+## Project Goal
+
+Our project aims to build an **interactive web-based visualization** of global fishing activity through a geopolitical lens.
+
+The main idea is to go beyond a simple global heatmap and let users explore fishing activity **dynamically across space and time**, while understanding **who is fishing where, and under whose authority**.
+
+The central element of the website is an **interactive world map** displaying fishing vessel activity. Users will be able to zoom and move across the globe, and the visualizations will update depending on the visible area.
+
+A key addition to this project is the integration of **Exclusive Economic Zones (EEZs)**. These maritime zones will be displayed directly on the map using distinct colors for each country. This allows us to clearly distinguish between national waters and international waters.
+
+By combining fishing activity data with EEZ boundaries, we can identify whether a vessel is operating:
+- within its own country's EEZ,
+- inside a foreign EEZ,
+- or in the High Seas.
+
+This enables a more precise analysis of **foreign fishing activity and potential illegal behavior**, such as a vessel from one country operating inside another country's EEZ.
+
+We also introduce a **storytelling component** through interactive points of interest (POIs) placed on meaningful maritime regions (e.g., South China Sea, North Atlantic). When clicked, these points trigger a zoom and display contextual explanations.
+
+In addition, a **dynamic dashboard** linked to the current map view will provide:
+- the distribution of vessels by country,
+- the share of vessels operating in foreign EEZs,
+- and the evolution of fishing activity over time.
+
+Our target audience includes the general public, journalists, and anyone interested in environmental and geopolitical issues related to the oceans.
+
+---
+
+## Sketch of the Final Visualization
+
+The final interface will contain the following elements:
+
+- **Landing page**  
+  A short introduction presenting the topic and the purpose of the project.
+
+- **Main map view**  
+  A world map showing fishing vessel activity, overlaid with **EEZ boundaries** colored by country. Users can zoom and pan to explore different regions.
+
+- **Fishing activity layer**  
+  Points or heatmap representing vessel activity on top of the EEZ map.
+
+- **Interactive points of interest**  
+  Blinking markers placed on important maritime regions. When clicked, they trigger a zoom and display explanatory text about geopolitical or economic significance.
+
+- **Dynamic charts linked to the map view**
+  1. **Bubble chart**: proportion of vessels by country in the visible area  
+  2. **Bar chart**: top 5 countries with the highest share of vessels operating in foreign EEZs (e.g., a Chinese vessel inside the French EEZ)  
+  3. **Time series**: evolution of fishing activity over time in the visible area  
+
+These components together allow users to explore both **spatial patterns** and **jurisdictional dynamics** of global fishing.
+
+---
+
+## Tools and Technologies
+
+We plan to use the following tools:
+
+### Visualization and Web Development
+- **HTML / CSS / JavaScript** for the website structure and interactions
+- **Leaflet** or **Mapbox GL JS** for the interactive map
+- **D3.js** for the dynamic charts
+
+### Data Processing
+- **Python**
+- **Pandas / GeoPandas** for preprocessing and spatial joins
+- **Parquet** format for handling large-scale fishing data efficiently
+
+### Course Material / Lectures Needed
+To complete the project, we will rely on concepts from the course such as:
+- interactive visualization design,
+- linked views,
+- storytelling with data,
+- dashboard design,
+- and efficient handling of large datasets.
+
+---
+
+## Prototype Status
+
+At this stage, we already have:
+- a **working landing page**,
+- an initial **map visualization**,
+- the interactive points of interest.
+- and a processed dataset ready to be used efficiently.
+
+The next implementation steps are:
+1. connect the map to dynamic filtering based on the visible region,
+2. implement the three charts
+3. the EEZ data and their representation on the map
+
+Our goal for the final project is to combine exploratory interaction and narrative guidance in a single coherent interface.
 
 
 ## Milestone 3 (29th May, 5pm)
@@ -88,4 +178,6 @@ Our approach is unique because it shifts the focus from "where" to "under whose 
 
 - < 24h: 80% of the grade for the milestone
 - < 48h: 70% of the grade for the milestone
+
+
 
