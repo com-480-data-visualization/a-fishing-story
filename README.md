@@ -110,8 +110,8 @@ Our target audience includes the general public, journalists, and anyone interes
 The final interface will contain the following elements:
 
 - **Landing page**  
-  A short introduction presenting the topic and the purpose of the project.
   <img width="1235" height="775" alt="Image" src="https://github.com/user-attachments/assets/e3b89a1e-e5eb-4367-ad7c-5e4e58ae3966" />
+  A short introduction presenting the topic and the purpose of the project.
 
 - **Main map view**
   <img width="1440" height="778" alt="Image" src="https://github.com/user-attachments/assets/1a3c2cd2-de96-4f06-87f1-35f215043532" />
