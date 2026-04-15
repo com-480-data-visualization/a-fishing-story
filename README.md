@@ -135,25 +135,27 @@ These components together allow users to explore both **spatial patterns** and *
 
 ## Tools and Technologies
 
-We plan to use the following tools:
+## Tools
 
-### Visualization and Web Development
-- **HTML / CSS / JavaScript** for the website structure and interactions
-- **Leaflet** or **Mapbox GL JS** for the interactive map
-- **D3.js** for the dynamic charts
+### Frontend
 
-### Data Processing
-- **Python**
-- **Pandas / GeoPandas** for preprocessing and spatial joins
-- **Parquet** format for handling large-scale fishing data efficiently
+The interactive map is built with [deck.gl (v9)](https://deck.gl), a WebGL-powered geospatial rendering framework, on top of [maplibre-gl](https://maplibre.org/maplibre-gl-js/docs) for tile-based basemap rendering. [react-map-gl](https://visgl.github.io/react-map-gl) integrates maplibre into the [React 19](https://react.dev) + [TypeScript](https://www.typescriptlang.org) component tree, bundled with [Vite](https://vitejs.dev).
 
-### Course Material / Lectures Needed
-To complete the project, we will rely on concepts from the course such as:
-- interactive visualization design,
-- linked views,
-- storytelling with data,
-- dashboard design,
-- and efficient handling of large datasets.
+All three analytical charts are rendered as **custom SVG** directly in React, without any external charting library, giving full control over layout, animation, and styling.
+
+[Parquet](https://parquet.apache.org) data returned by the backend is parsed using the [apache-arrow](https://arrow.apache.org/docs/js) JavaScript library, which avoids the overhead of JSON serialization for large datasets.
+
+### Backend
+
+The API is built with [FastAPI](https://fastapi.tiangolo.com) ([Python](https://www.python.org)). Data is queried using [DuckDB](https://duckdb.org), an in-process analytical SQL engine that reads Parquet files directly from disk. Map tile responses are serialized as **Apache Arrow IPC streams** via [PyArrow](https://arrow.apache.org/docs/python).
+
+The raw Global Fishing Watch AIS data was pre-processed from CSV to **Parquet** format, with EEZ membership pre-joined from Marine Regions shapefiles.
+
+## Lectures
+
+* **Interaction**: Use zoom/pan, filtering, linking, and overview→details workflows to let users explore fishing data dynamically on the map 
+* **Perception & Colors**: Use appropriate color scales and preattentive features to make fishing patterns instantly readable 
+* **Marks & Channels**: Represent fishing data with map-based marks and encode attributes using position, size, and color effectively 
 
 ---
 
