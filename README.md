@@ -174,6 +174,7 @@ The next implementation steps are:
 
 Our goal for the final project is to combine exploratory interaction and narrative guidance in a single coherent interface.
 
+Website is available at: https://com-480-data-visualization.github.io/a-fishing-story/
 
 ## Milestone 3 (29th May, 5pm)
 
