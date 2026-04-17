@@ -1,25 +1,6 @@
-import * as duckdb from '@duckdb/duckdb-wasm'
 import type { AsyncDuckDBConnection } from '@duckdb/duckdb-wasm'
 import type { FishingCell, BBox, ChartItem, TimeSeriesItem } from '../api/fishing'
-import { DATA_BASE_URL, getDB, resolveDirectUrl } from './index'
-
-// Maps logical name → resolved direct URL already registered with DuckDB.
-const registered = new Map<string, string>()
-
-async function registerParquet(name: string, logicalUrl: string): Promise<void> {
-  const directUrl = await resolveDirectUrl(logicalUrl)
-
-  // Re-register if the direct URL changed (signed URL refreshed).
-  if (registered.get(name) === directUrl) return
-
-  const db = await getDB()
-  await db.registerFileURL(name, directUrl, duckdb.DuckDBDataProtocol.HTTP, false)
-  registered.set(name, directUrl)
-}
-
-function monthName(yearMonth: string): string {
-  return `fleet-daily-${yearMonth}.parquet`
-}
+import { DATA_BASE_URL } from './index'
 
 function monthUrl(yearMonth: string): string {
   return `${DATA_BASE_URL}/daily_sorted/fleet-daily-${yearMonth}.parquet`
@@ -34,9 +15,7 @@ export async function queryDaily(
   bbox?: BBox,
 ): Promise<FishingCell[]> {
   const yearMonth = date.slice(0, 7)
-  const name = monthName(yearMonth)
-  await registerParquet(name, monthUrl(yearMonth))
-
+  const url = monthUrl(yearMonth)
   const res = resolution
   const conditions: string[] = [`date = '${date}'`]
   if (bbox) {
@@ -51,7 +30,7 @@ export async function queryDaily(
       (ROUND(cell_ll_lat / ${res}) * ${res})::FLOAT AS lat,
       (ROUND(cell_ll_lon / ${res}) * ${res})::FLOAT AS lon,
       SUM(fishing_hours)::FLOAT AS fishing_hours
-    FROM read_parquet('${name}')
+    FROM read_parquet('${url}')
     WHERE ${conditions.join(' AND ')}
     GROUP BY lat, lon
   `)
@@ -92,9 +71,7 @@ export async function queryRange(
   }
   if (yearMonths.length === 0) return new Map()
 
-  await Promise.all(yearMonths.map(ym => registerParquet(monthName(ym), monthUrl(ym))))
-
-  const namesList = '[' + yearMonths.map(ym => `'${monthName(ym)}'`).join(', ') + ']'
+  const urlList = '[' + yearMonths.map(ym => `'${monthUrl(ym)}'`).join(', ') + ']'
   const conditions: string[] = [
     `date BETWEEN '${dateStart}' AND '${dateEnd}'`,
     `cell_ll_lat BETWEEN ${bbox?.lat_min ?? -90} AND ${bbox?.lat_max ?? 90}`,
@@ -109,7 +86,7 @@ export async function queryRange(
       (ROUND(cell_ll_lat / ${res}) * ${res})::FLOAT AS lat,
       (ROUND(cell_ll_lon / ${res}) * ${res})::FLOAT AS lon,
       SUM(fishing_hours)::FLOAT AS fishing_hours
-    FROM read_parquet(${namesList})
+    FROM read_parquet(${urlList})
     WHERE ${conditions.join(' AND ')}
     GROUP BY date, lat, lon
     ORDER BY date
@@ -138,15 +115,13 @@ export async function queryChart(
   date: string,
   bbox: BBox,
 ): Promise<ChartItem[]> {
-  const yearMonth = date.slice(0, 7)
-  const name = monthName(yearMonth)
-  await registerParquet(name, monthUrl(yearMonth))
+  const url = monthUrl(date.slice(0, 7))
 
   const table = await conn.query(`
     SELECT
       flag AS label,
       SUM(mmsi_present)::DOUBLE AS value
-    FROM read_parquet('${name}')
+    FROM read_parquet('${url}')
     WHERE date = '${date}'
       AND cell_ll_lon BETWEEN ${bbox.lon_min} AND ${bbox.lon_max}
       AND cell_ll_lat BETWEEN ${bbox.lat_min} AND ${bbox.lat_max}
@@ -170,15 +145,14 @@ export async function queryTimeSeries(
   conn: AsyncDuckDBConnection,
   bbox: BBox,
 ): Promise<TimeSeriesItem[]> {
-  const name = 'timeseries_grid.parquet'
-  await registerParquet(name, `${DATA_BASE_URL}/timeseries_grid.parquet`)
+  const url = `${DATA_BASE_URL}/timeseries_grid.parquet`
 
   const table = await conn.query(`
     SELECT
       year::INTEGER  AS year,
       month::INTEGER AS month,
       SUM(vessel_count)::BIGINT AS vessel_count
-    FROM read_parquet('${name}')
+    FROM read_parquet('${url}')
     WHERE cell_ll_lon BETWEEN ${bbox.lon_min} AND ${bbox.lon_max}
       AND cell_ll_lat BETWEEN ${bbox.lat_min} AND ${bbox.lat_max}
     GROUP BY year, month
