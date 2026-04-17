@@ -143,11 +143,9 @@ The interactive map is built with [deck.gl (v9)](https://deck.gl), a WebGL-power
 
 All three analytical charts are rendered as **custom SVG** directly in React, without any external charting library, giving full control over layout, animation, and styling.
 
-[Parquet](https://parquet.apache.org) data returned by the backend is parsed using the [apache-arrow](https://arrow.apache.org/docs/js) JavaScript library, which avoids the overhead of JSON serialization for large datasets.
+There is no backend. Data queries run entirely client-side using [DuckDB WASM](https://duckdb.org/docs/api/wasm/overview) in a Web Worker — an in-process analytical SQL engine compiled to WebAssembly that reads [Parquet](https://parquet.apache.org) files hosted on [Hugging Face Hub](https://huggingface.co). Query results are consumed via the [apache-arrow](https://arrow.apache.org/docs/js) JavaScript library. The frontend is deployed as a fully static build on GitHub Pages.
 
-### Backend
-
-The API is built with [FastAPI](https://fastapi.tiangolo.com) ([Python](https://www.python.org)). Data is queried using [DuckDB](https://duckdb.org), an in-process analytical SQL engine that reads Parquet files directly from disk. Map tile responses are serialized as **Apache Arrow IPC streams** via [PyArrow](https://arrow.apache.org/docs/python).
+### Data
 
 The raw Global Fishing Watch AIS data was pre-processed from CSV to **Parquet** format, with EEZ membership pre-joined from Marine Regions shapefiles.
 
