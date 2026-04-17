@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { MapViewState } from '@deck.gl/core'
 import type { Map as MaplibreMap } from 'maplibre-gl'
 
@@ -9,6 +9,8 @@ import ChartSlot, { COMPACT_SCALE } from '../components/charts/ChartSlot'
 import BubbleChart from '../components/charts/BubbleChart'
 import LollipopChart from '../components/charts/LollipopChart'
 import HeatmapChart from '../components/charts/HeatmapChart'
+import Timeline from '../components/Timeline'
+import MapLegend from '../components/MapLegend'
 
 import { ZONES } from '../data/zones'
 import type { Zone } from '../data/zones'
@@ -17,18 +19,15 @@ import { useViewportCharts } from '../hooks/useViewportCharts'
 
 const INITIAL_DATE = '2023-01-01'
 const INITIAL_VIEW = { longitude: 10, latitude: 32.44, zoom: 1.4 }
-const REPLAY_DATE_START = '2023-01-01'
-const REPLAY_DATE_END = '2023-02-28'
 
-// How long to ignore the dismiss-on-pan check after clicking a zone (ms).
-// Covers the 1400ms zoom animation plus a small buffer.
 const ZONE_SELECT_GRACE_MS = 2000
 
 export default function Home() {
-  const { data, viewState, resolution, mode, containerRef, currentDate, onViewStateChange, startReplay, stopReplay } =
-    useMapState(INITIAL_DATE, INITIAL_VIEW, [])
-
-  const isReplay = mode.type === 'replay'
+  const {
+    data, viewState, resolution, containerRef,
+    currentDate, isPlaying,
+    onViewStateChange, seek, play, pause,
+  } = useMapState(INITIAL_DATE, INITIAL_VIEW)
 
   const [mapInstance, setMapInstance] = useState<MaplibreMap | null>(null)
   const [selectedZone, setSelectedZone] = useState<Zone | null>(null)
@@ -36,6 +35,14 @@ export default function Home() {
   const [lockedIndex, setLockedIndex] = useState<number | null>(null)
 
   const { bubbleData, illegalData, timeSeriesData } = useViewportCharts(containerRef, viewState, currentDate)
+
+  const maxHours = useMemo(() => {
+    let max = 0
+    for (const cells of data.values())
+      for (const cell of cells)
+        if (cell.fishing_hours > max) max = cell.fishing_hours
+    return max
+  }, [data])
 
   const lastZoneSelectTime = useRef<number>(0)
 
@@ -52,8 +59,6 @@ export default function Home() {
     setShowChart(true)
   }
 
-  // Dismiss zone panel when user zooms out or pans away significantly.
-  // Skipped during the zoom animation grace period.
   useEffect(() => {
     if (!selectedZone) return
     if (Date.now() - lastZoneSelectTime.current < ZONE_SELECT_GRACE_MS) return
@@ -64,19 +69,17 @@ export default function Home() {
     if (viewState.zoom < 3.5 || dist > 20) setSelectedZone(null)
   }, [viewState.longitude, viewState.latitude, viewState.zoom, selectedZone])
 
-  // Spacebar toggles replay
-  const toggleRef = useRef<() => void>(() => {})
-  toggleRef.current = () => {
-    if (isReplay) stopReplay()
-    else startReplay(REPLAY_DATE_START, REPLAY_DATE_END)
-  }
+  // Spacebar toggles play/pause
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.code === 'Space') { e.preventDefault(); toggleRef.current() }
+      if (e.code === 'Space') {
+        e.preventDefault()
+        isPlaying ? pause() : play()
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [])
+  }, [isPlaying, play, pause])
 
   return (
     <div style={{ width: '100%', height: '100svh', position: 'relative' }}>
@@ -97,11 +100,10 @@ export default function Home() {
         resolution={resolution}
         containerRef={containerRef}
         onViewStateChange={onViewStateChange}
-        locked={isReplay}
+        locked={isPlaying}
         onMapInstance={setMapInstance}
       />
 
-      {/* Zone markers — rendered outside DeckGL canvas to receive pointer events */}
       {mapInstance && viewState.zoom < 5.5 && ZONES.map(zone => {
         const px = mapInstance.project([zone.lon, zone.lat])
         return (
@@ -134,6 +136,8 @@ export default function Home() {
         </div>
       )}
 
+      <MapLegend maxHours={maxHours} />
+
       {/* Toggle charts button */}
       <button
         onClick={() => setShowChart(prev => !prev)}
@@ -155,18 +159,13 @@ export default function Home() {
         </svg>
       </button>
 
-      <button
-        onClick={() => toggleRef.current()}
-        style={{
-          position: 'absolute', bottom: 24, left: '50%', transform: 'translateX(-50%)',
-          padding: '8px 20px',
-          background: isReplay ? '#c0392b' : '#2e3438',
-          color: 'white', border: 'none', borderRadius: 4,
-          cursor: 'pointer', fontSize: 14, letterSpacing: '0.05em', zIndex: 20,
-        }}
-      >
-        {isReplay ? '■ Stop' : '▶ Replay'}
-      </button>
+      {/* Timeline */}
+      <Timeline
+        currentDate={currentDate}
+        isPlaying={isPlaying}
+        onSeek={seek}
+        onPlayPause={() => isPlaying ? pause() : play()}
+      />
     </div>
   )
 }

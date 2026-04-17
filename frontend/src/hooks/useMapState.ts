@@ -1,99 +1,75 @@
-import { useReducer, useRef } from 'react'
+import { useCallback, useEffect, useReducer, useRef } from 'react'
 import type { MapViewState } from '@deck.gl/core'
-import { zoomToResolution } from '../utils'
+import { zoomToResolution, nextDay } from '../utils'
 import { useDailyFetch } from './useDailyFetch'
-import { useReplayData } from './useReplayData'
 
-// --- FSM types ---
+export const DATE_MIN = '2020-01-01'
+export const DATE_MAX = '2024-12-31'
 
-type DailyMode = {
-  type: 'daily'
-  date: string
-}
-
-type ReplayMode = {
-  type: 'replay'
-  dateStart: string
-  dateEnd: string
-}
-
-export type MapMode = DailyMode | ReplayMode
+const PLAY_INTERVAL_MS = 500
 
 interface State {
-  mode: MapMode
+  currentDate: string
+  isPlaying: boolean
   viewState: MapViewState
 }
 
 type Action =
-  | { type: 'SET_DATE'; date: string }
+  | { type: 'SEEK'; date: string }
   | { type: 'SET_VIEW_STATE'; viewState: MapViewState }
-  | { type: 'START_REPLAY'; dateStart: string; dateEnd: string }
-  | { type: 'STOP_REPLAY'; date: string }
+  | { type: 'SET_PLAYING'; playing: boolean }
+  | { type: 'TICK' }
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
-    case 'SET_DATE':
-      if (state.mode.type !== 'daily') return state
-      return { ...state, mode: { ...state.mode, date: action.date } }
-
+    case 'SEEK':
+      return { ...state, currentDate: action.date, isPlaying: false }
     case 'SET_VIEW_STATE':
       return { ...state, viewState: action.viewState }
-
-    case 'START_REPLAY':
-      return {
-        ...state,
-        mode: { type: 'replay', dateStart: action.dateStart, dateEnd: action.dateEnd },
-      }
-
-    case 'STOP_REPLAY':
-      return { ...state, mode: { type: 'daily', date: action.date } }
-
+    case 'SET_PLAYING':
+      return { ...state, isPlaying: action.playing }
+    case 'TICK': {
+      const next = nextDay(state.currentDate)
+      if (next > DATE_MAX) return { ...state, isPlaying: false }
+      return { ...state, currentDate: next }
+    }
     default:
       return state
   }
 }
 
-export function useMapState(initialDate: string, initialViewState: MapViewState, flags: string[] = []) {
+export function useMapState(initialDate: string, initialViewState: MapViewState) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [state, dispatch] = useReducer(reducer, {
-    mode: { type: 'daily', date: initialDate },
+    currentDate: initialDate,
+    isPlaying: false,
     viewState: initialViewState,
   })
 
   const currentResolution = zoomToResolution(state.viewState.zoom)
-  const dailyDate = state.mode.type === 'daily' ? state.mode.date : null
-  const replayEnabled = state.mode.type === 'replay'
-  const replayDateStart = state.mode.type === 'replay' ? state.mode.dateStart : null
-  const replayDateEnd = state.mode.type === 'replay' ? state.mode.dateEnd : null
+  const data = useDailyFetch(state.currentDate, currentResolution, [], containerRef, state.viewState)
 
-  const dailyData = useDailyFetch(dailyDate, currentResolution, flags, containerRef, state.viewState)
-  const { data: replayData, currentDate: replayCurrentDate } = useReplayData(
-    replayEnabled,
-    replayDateStart,
-    replayDateEnd,
-    currentResolution,
-    flags,
-    containerRef,
-    state.viewState,
-  )
+  useEffect(() => {
+    if (!state.isPlaying) return
+    const id = setInterval(() => dispatch({ type: 'TICK' }), PLAY_INTERVAL_MS)
+    return () => clearInterval(id)
+  }, [state.isPlaying])
 
-  const displayData = state.mode.type === 'daily' ? dailyData : replayData
+  const onViewStateChange = useCallback((vs: MapViewState) => dispatch({ type: 'SET_VIEW_STATE', viewState: vs }), [])
+  const seek  = useCallback((date: string) => dispatch({ type: 'SEEK', date }), [])
+  const play  = useCallback(() => dispatch({ type: 'SET_PLAYING', playing: true }), [])
+  const pause = useCallback(() => dispatch({ type: 'SET_PLAYING', playing: false }), [])
 
   return {
-    data: displayData,
+    data,
     viewState: state.viewState,
     resolution: currentResolution,
-    mode: state.mode,
     containerRef,
-    currentDate:
-      state.mode.type === 'daily'
-        ? state.mode.date
-        : (replayCurrentDate ?? replayDateStart ?? initialDate),
-    onViewStateChange: (vs: MapViewState) => dispatch({ type: 'SET_VIEW_STATE', viewState: vs }),
-    startReplay: (dateStart: string, dateEnd: string) =>
-      dispatch({ type: 'START_REPLAY', dateStart, dateEnd }),
-    stopReplay: () =>
-      dispatch({ type: 'STOP_REPLAY', date: replayCurrentDate ?? replayDateStart ?? initialDate }),
-    setDate: (date: string) => dispatch({ type: 'SET_DATE', date }),
+    currentDate: state.currentDate,
+    isPlaying: state.isPlaying,
+    onViewStateChange,
+    seek,
+    play,
+    pause,
   }
 }
