@@ -45,3 +45,27 @@ export async function getDB(): Promise<duckdb.AsyncDuckDB> {
 export async function getConnection(): Promise<duckdb.AsyncDuckDBConnection> {
   return (await getState()).conn
 }
+
+// --- URL resolution cache ---
+// HF redirects to signed S3 URLs that expire after ~3600s. We cache the
+// resolved direct URL per logical name and re-resolve when near expiry.
+
+interface CachedUrl {
+  directUrl: string
+  expiresAt: number
+}
+
+const urlCache = new Map<string, CachedUrl>()
+const TTL_MS = 55 * 60 * 1000 // 55 min — safely under the 60-min signed URL expiry
+
+export async function resolveDirectUrl(logicalUrl: string): Promise<string> {
+  const cached = urlCache.get(logicalUrl)
+  if (cached && Date.now() < cached.expiresAt) return cached.directUrl
+
+  const resp = await fetch(logicalUrl, { method: 'HEAD' })
+  // After following redirects, resp.url is the final direct URL
+  const directUrl = resp.url
+
+  urlCache.set(logicalUrl, { directUrl, expiresAt: Date.now() + TTL_MS })
+  return directUrl
+}

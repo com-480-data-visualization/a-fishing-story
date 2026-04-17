@@ -1,24 +1,21 @@
 import * as duckdb from '@duckdb/duckdb-wasm'
 import type { AsyncDuckDBConnection } from '@duckdb/duckdb-wasm'
 import type { FishingCell, BBox, ChartItem, TimeSeriesItem } from '../api/fishing'
-import { DATA_BASE_URL, getDB } from './index'
+import { DATA_BASE_URL, getDB, resolveDirectUrl } from './index'
 
-// Track which file names have already been registered to avoid redundant calls.
-const registered = new Set<string>()
+// Maps logical name → resolved direct URL already registered with DuckDB.
+const registered = new Map<string, string>()
 
-/**
- * Register a remote parquet URL with DuckDB's HTTP filesystem (range-request aware).
- * The virtual `name` is what appears in SQL queries; the URL is the actual HTTP source.
- * Without this, DuckDB fetches the whole file instead of using HTTP range requests.
- */
-async function registerParquet(name: string, url: string): Promise<void> {
-  if (registered.has(name)) return
+async function registerParquet(name: string, logicalUrl: string): Promise<void> {
+  const directUrl = await resolveDirectUrl(logicalUrl)
+
+  // Re-register if the direct URL changed (signed URL refreshed).
+  if (registered.get(name) === directUrl) return
+
   const db = await getDB()
-  await db.registerFileURL(name, url, duckdb.DuckDBDataProtocol.HTTP, false)
-  registered.add(name)
+  await db.registerFileURL(name, directUrl, duckdb.DuckDBDataProtocol.HTTP, false)
+  registered.set(name, directUrl)
 }
-
-// --- daily_sorted helpers ---
 
 function monthName(yearMonth: string): string {
   return `fleet-daily-${yearMonth}.parquet`
@@ -36,7 +33,7 @@ export async function queryDaily(
   geartype?: string,
   bbox?: BBox,
 ): Promise<FishingCell[]> {
-  const yearMonth = date.slice(0, 7) // 'YYYY-MM'
+  const yearMonth = date.slice(0, 7)
   const name = monthName(yearMonth)
   await registerParquet(name, monthUrl(yearMonth))
 
