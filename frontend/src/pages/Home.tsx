@@ -18,7 +18,7 @@ import { useViewportCharts } from '../hooks/useViewportCharts'
 const INITIAL_DATE = '2023-01-01'
 const INITIAL_VIEW = { longitude: 10, latitude: 32.44, zoom: 1.4 }
 const REPLAY_DATE_START = '2023-01-01'
-const REPLAY_DATE_END = '2023-02-28'
+const REPLAY_DATE_END = '2023-01-31'
 
 // How long to ignore the dismiss-on-pan check after clicking a zone (ms).
 // Covers the 1400ms zoom animation plus a small buffer.
