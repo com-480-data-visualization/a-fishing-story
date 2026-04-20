@@ -1,5 +1,5 @@
 import { getConnection } from '../db'
-import { queryDaily, queryRange, queryChart, queryTimeSeries } from '../db/queries'
+import { queryDaily, queryChart, queryIllegalFishing, queryTimeSeries } from '../db/queries'
 import metaJson from '../data/meta.json'
 
 export interface FishingCell {
@@ -51,18 +51,6 @@ export async function fetchFishingDaily(
   return queryDaily(conn, date, resolution, flag, geartype, bbox)
 }
 
-export async function fetchFishingRange(
-  dateStart: string,
-  dateEnd: string,
-  resolution: number,
-  flag?: string,
-  geartype?: string,
-  bbox?: BBox,
-): Promise<Map<string, FishingCell[]>> {
-  const conn = await getConnection()
-  return queryRange(conn, dateStart, dateEnd, resolution, flag, geartype, bbox)
-}
-
 export function fetchFishingMeta(): Promise<FishingMeta> {
   return Promise.resolve(metaJson as FishingMeta)
 }
@@ -78,13 +66,15 @@ export async function fetchFishingChart(
   return { data }
 }
 
-export function fetchIllegalFishingChart(
-  _date: string,
-  _bbox: BBox,
-  _signal?: AbortSignal,
+export async function fetchIllegalFishingChart(
+  date: string,
+  bbox: BBox,
+  signal?: AbortSignal,
 ): Promise<{ data: IllegalChartItem[] }> {
-  // No daily_with_eez data available — stub
-  return Promise.resolve({ data: [] })
+  if (signal?.aborted) return { data: [] }
+  const conn = await getConnection()
+  const data = await queryIllegalFishing(conn, date, bbox)
+  return { data }
 }
 
 export async function fetchTimeSeriesChart(

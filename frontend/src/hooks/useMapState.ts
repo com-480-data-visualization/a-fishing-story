@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useReducer, useRef } from 'react'
+import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
 import type { MapViewState } from '@deck.gl/core'
 import { zoomToResolution, nextDay } from '../utils'
-import { useDailyFetch } from './useDailyFetch'
+import { useDataController } from './useDataController'
+import type { FishingCell } from '../api/fishing'
+import { DATE_MIN, DATE_MAX } from '../constants'
 
-export const DATE_MIN = '2020-01-01'
-export const DATE_MAX = '2024-12-31'
+export { DATE_MIN, DATE_MAX }
 
 const PLAY_INTERVAL_MS = 500
 
@@ -47,7 +48,12 @@ export function useMapState(initialDate: string, initialViewState: MapViewState)
   })
 
   const currentResolution = zoomToResolution(state.viewState.zoom)
-  const data = useDailyFetch(state.currentDate, currentResolution, [], containerRef, state.viewState)
+  const { data, loading } = useDataController(state.currentDate, currentResolution, [], containerRef, state.viewState)
+
+  const [displayData, setDisplayData] = useState<Map<string, FishingCell[]>>(data)
+  useEffect(() => {
+    if (!loading) setDisplayData(data)
+  }, [loading, data])
 
   useEffect(() => {
     if (!state.isPlaying) return
@@ -61,7 +67,8 @@ export function useMapState(initialDate: string, initialViewState: MapViewState)
   const pause = useCallback(() => dispatch({ type: 'SET_PLAYING', playing: false }), [])
 
   return {
-    data,
+    data: displayData,
+    loading,
     viewState: state.viewState,
     resolution: currentResolution,
     containerRef,

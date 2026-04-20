@@ -117,7 +117,7 @@ export default function Home() {
         <ZoneInfoPanel zone={selectedZone} onClose={() => setSelectedZone(null)} />
       )}
 
-      {false && (
+      {showChart && (
         <div style={{
           position: 'absolute', top: '50%', right: 20,
           transform: 'translateY(-50%)',
