@@ -8,7 +8,12 @@
       "Bash(conda activate:*)",
       "Bash(conda run -n fishing python3 -c ':*)",
       "Bash(conda run:*)",
-      "Bash(echo \"EXIT:$?\")"
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(conda list:*)",
+      "Bash(conda env:*)",
+      "Bash(node:*)",
+      "Bash(rm -rf node_modules package-lock.json)",
+      "Bash(npm install:*)"
     ]
   }
 }
