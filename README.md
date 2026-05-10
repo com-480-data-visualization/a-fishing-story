@@ -132,9 +132,7 @@ The final interface will contain the following elements:
 These components together allow users to explore both **spatial patterns** and **jurisdictional dynamics** of global fishing.
 
 - **Fishing hours unit**
-  Fishing hours represent the total time (in hours) that vessels were actively fishing within a grid cell on a given day. This metric is derived from AIS (Automatic Identification System) vessel        
-  tracking data: each vessel broadcasts its position every few minutes, and a machine learning model developed by Global Fishing Watch analyzes the speed and heading of each signal to classify whether  
-  the vessel is actively fishing or simply transiting. Fishing hours are the cumulative sum of these time intervals classified as active fishing.                                                       
+  Fishing hours represent the total time (in hours) that vessels were actively fishing within a grid cell on a given day. This metric is derived from AIS (Automatic Identification System) vessel tracking data: each vessel broadcasts its position every few minutes, and a machine learning model developed by Global Fishing Watch analyzes the speed and heading of each signal to classify whether the vessel is actively fishing or simply transiting. Fishing hours are the cumulative sum of these time intervals classified as active fishing.                                                       
                                                                                                                                                                                                           
   For example, a grid cell with 10 fishing hours means that vessels spent a combined 10 hours fishing in that area on that day — whether from one vessel fishing for 10 hours, or ten vessels fishing for
   1 hour each.                                                                                                                                                                                            
