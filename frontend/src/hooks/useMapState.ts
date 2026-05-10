@@ -47,8 +47,11 @@ export function useMapState(initialDate: string, initialViewState: MapViewState)
     viewState: initialViewState,
   })
 
+  const [selectedFlag, setSelectedFlag] = useState<string | null>(null)
+
   const currentResolution = zoomToResolution(state.viewState.zoom)
-  const { data, loading } = useDataController(state.currentDate, currentResolution, [], containerRef, state.viewState)
+  const flags = selectedFlag ? [selectedFlag] : []
+  const { data, loading } = useDataController(state.currentDate, currentResolution, flags, containerRef, state.viewState)
 
   const [displayData, setDisplayData] = useState<Map<string, FishingCell[]>>(data)
   useEffect(() => {
@@ -74,6 +77,8 @@ export function useMapState(initialDate: string, initialViewState: MapViewState)
     containerRef,
     currentDate: state.currentDate,
     isPlaying: state.isPlaying,
+    selectedFlag,
+    setSelectedFlag,
     onViewStateChange,
     seek,
     play,

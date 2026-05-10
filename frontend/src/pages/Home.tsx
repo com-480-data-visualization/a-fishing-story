@@ -11,6 +11,7 @@ import LollipopChart from '../components/charts/LollipopChart'
 import HeatmapChart from '../components/charts/HeatmapChart'
 import Timeline from '../components/Timeline'
 import MapLegend from '../components/MapLegend'
+import FlagPicker from '../components/FlagPicker'
 
 import { ZONES } from '../data/zones'
 import type { Zone } from '../data/zones'
@@ -26,12 +27,14 @@ export default function Home() {
   const {
     data, viewState, resolution, containerRef,
     currentDate, isPlaying,
+    selectedFlag, setSelectedFlag,
     onViewStateChange, seek, play, pause,
   } = useMapState(INITIAL_DATE, INITIAL_VIEW)
 
   const [mapInstance, setMapInstance] = useState<MaplibreMap | null>(null)
   const [selectedZone, setSelectedZone] = useState<Zone | null>(null)
   const [showChart, setShowChart] = useState(false)
+  const [flagPickerOpen, setFlagPickerOpen] = useState(false)
   const [lockedIndex, setLockedIndex] = useState<number | null>(null)
 
   const { bubbleData, illegalData, timeSeriesData } = useViewportCharts(containerRef, viewState, currentDate)
@@ -140,7 +143,7 @@ export default function Home() {
 
       {/* Toggle charts button */}
       <button
-        onClick={() => setShowChart(prev => !prev)}
+        onClick={() => { setShowChart(prev => !prev); setFlagPickerOpen(false) }}
         title={showChart ? 'Hide charts' : 'Show charts'}
         style={{
           position: 'absolute', top: 20, right: 20,
@@ -158,6 +161,13 @@ export default function Home() {
           <rect x="13" y="1"  width="4" height="16" rx="1" opacity={showChart ? 1 : 0.5} />
         </svg>
       </button>
+
+      <FlagPicker
+        selectedFlag={selectedFlag}
+        onSelect={setSelectedFlag}
+        open={flagPickerOpen}
+        onOpenChange={v => { setFlagPickerOpen(v); if (v) setShowChart(false) }}
+      />
 
       {/* Timeline */}
       <Timeline

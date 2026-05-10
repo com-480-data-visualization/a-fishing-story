@@ -37,7 +37,7 @@ export default function MapView({
 
   const layers = useMemo(() => {
     const entries = Array.from(data.entries())
-    const isMultiFlag = entries.length > 1 || (entries.length === 1 && entries[0][0] !== '')
+    const isMultiFlag = entries.length > 1
 
     return entries.map(([flag, cells], index) => {
       const maxHours = cells.reduce((max, d) => Math.max(max, d.fishing_hours), 1)
