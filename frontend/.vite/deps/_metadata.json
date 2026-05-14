@@ -1,0 +1,84 @@
+{
+  "hash": "d8835d51",
+  "configHash": "d19841b1",
+  "lockfileHash": "9d915be6",
+  "browserHash": "11fcc594",
+  "optimized": {
+    "@deck.gl/core": {
+      "src": "../../node_modules/@deck.gl/core/dist/index.js",
+      "file": "@deck__gl_core.js",
+      "fileHash": "49366c9c",
+      "needsInterop": false
+    },
+    "@deck.gl/layers": {
+      "src": "../../node_modules/@deck.gl/layers/dist/index.js",
+      "file": "@deck__gl_layers.js",
+      "fileHash": "0c327ad8",
+      "needsInterop": false
+    },
+    "@deck.gl/react": {
+      "src": "../../node_modules/@deck.gl/react/dist/index.js",
+      "file": "@deck__gl_react.js",
+      "fileHash": "04ee06d7",
+      "needsInterop": false
+    },
+    "apache-arrow": {
+      "src": "../../node_modules/apache-arrow/Arrow.dom.mjs",
+      "file": "apache-arrow.js",
+      "fileHash": "70f175ab",
+      "needsInterop": false
+    },
+    "react-dom/client": {
+      "src": "../../node_modules/react-dom/client.js",
+      "file": "react-dom_client.js",
+      "fileHash": "ca22dafa",
+      "needsInterop": true
+    },
+    "react-map-gl/maplibre": {
+      "src": "../../node_modules/react-map-gl/dist/maplibre.js",
+      "file": "react-map-gl_maplibre.js",
+      "fileHash": "6073ba29",
+      "needsInterop": false
+    },
+    "react-router-dom": {
+      "src": "../../node_modules/react-router-dom/dist/index.mjs",
+      "file": "react-router-dom.js",
+      "fileHash": "49c4e58e",
+      "needsInterop": false
+    },
+    "react": {
+      "src": "../../node_modules/react/index.js",
+      "file": "react.js",
+      "fileHash": "0c1039a6",
+      "needsInterop": true
+    },
+    "react/jsx-dev-runtime": {
+      "src": "../../node_modules/react/jsx-dev-runtime.js",
+      "file": "react_jsx-dev-runtime.js",
+      "fileHash": "4d944f56",
+      "needsInterop": true
+    }
+  },
+  "chunks": {
+    "chunk-BoAXSpZd": {
+      "file": "chunk-BoAXSpZd.js",
+      "isDynamicEntry": false
+    },
+    "dist-CIPsRTkp": {
+      "file": "dist-CIPsRTkp.js",
+      "isDynamicEntry": false
+    },
+    "maplibre-gl-DwOe9BdS": {
+      "file": "maplibre-gl-DwOe9BdS.js",
+      "isDynamicEntry": true
+    },
+    "react-dom-BjPBJlww": {
+      "file": "react-dom-BjPBJlww.js",
+      "isDynamicEntry": false
+    },
+    "webgl-device-DlhmycHz": {
+      "file": "webgl-device-DlhmycHz.js",
+      "isDynamicEntry": false
+    }
+  }
+}

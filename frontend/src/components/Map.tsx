@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import type { RefObject } from 'react'
 import DeckGL from '@deck.gl/react'
 import { SolidPolygonLayer } from '@deck.gl/layers'
@@ -10,8 +10,9 @@ import type { Map as MaplibreMap } from 'maplibre-gl'
 
 import type { FishingCell } from '../api/fishing'
 import { fishingColor, flagColor } from '../utils'
+import { DATA_BASE_URL } from '../db/index'
 
-const MAP_STYLE = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json'
+const MAP_STYLE = 'https://tiles.stadiamaps.com/styles/outdoors.json'
 
 interface MapViewProps {
   data: Map<string, FishingCell[]>
@@ -21,6 +22,7 @@ interface MapViewProps {
   onViewStateChange: (vs: MapViewState) => void
   locked?: boolean
   onMapInstance?: (map: MaplibreMap) => void
+  showEEZ?: boolean
 }
 
 export default function MapView({
@@ -31,9 +33,19 @@ export default function MapView({
   onViewStateChange,
   locked,
   onMapInstance,
+  showEEZ = false,
 }: MapViewProps) {
   const mapRef = useRef<MapRef>(null)
+  const eezReadyRef = useRef(false)
+  const showEEZRef = useRef(showEEZ)
+  showEEZRef.current = showEEZ
   const res = resolution
+
+  useEffect(() => {
+    const map = mapRef.current?.getMap()
+    if (!map || !eezReadyRef.current) return
+    map.setLayoutProperty('eez-lines', 'visibility', showEEZ ? 'visible' : 'none')
+  }, [showEEZ])
 
   const layers = useMemo(() => {
     const entries = Array.from(data.entries())
@@ -72,9 +84,27 @@ export default function MapView({
           ref={mapRef}
           mapStyle={MAP_STYLE}
           onLoad={() => {
-            if (onMapInstance && mapRef.current) {
-              onMapInstance(mapRef.current.getMap())
+            const map = mapRef.current?.getMap()
+            if (!map) return
+            map.addSource('eez-boundaries', {
+              type: 'geojson',
+              data: `${DATA_BASE_URL}/eez_boundaries.geojson`,
+            })
+            map.addLayer({
+              id: 'eez-lines',
+              type: 'line',
+              source: 'eez-boundaries',
+              layout: { visibility: 'none' },
+              paint: {
+                'line-color': 'rgba(12, 203, 194, 0.75)',
+                'line-width': 1.5,
+              },
+            })
+            eezReadyRef.current = true
+            if (showEEZRef.current) {
+              map.setLayoutProperty('eez-lines', 'visibility', 'visible')
             }
+            if (onMapInstance) onMapInstance(map)
           }}
         />
       </DeckGL>

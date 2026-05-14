@@ -16,7 +16,7 @@ export function getDonutColor(index: number): string {
 }
 
 const SVG_W = 340
-const SVG_H = 300
+const SVG_H = 250
 const PLOT_CX = SVG_W / 2
 const PLOT_CY = 44 + (SVG_H - 44) / 2
 const MIN_R = 16

@@ -26,7 +26,7 @@ export function bboxExceedsFetched(current: BBox, fetched: BBox): boolean {
 }
 
 export function fishingColor(value: number, max: number): [number, number, number, number] {
-  const t = Math.min(value / max, 1)
+  const t = Math.min(Math.log1p(value) / Math.log1p(max), 1)
   return [
     Math.round(t * 255),
     Math.round(t * 200),
@@ -44,7 +44,7 @@ const FLAG_COLORS: [number, number, number][] = [
 ]
 
 export function flagColor(flagIndex: number, value: number, max: number): [number, number, number, number] {
-  const t = Math.min(value / max, 1)
+  const t = Math.min(Math.log1p(value) / Math.log1p(max), 1)
   const [r, g, b] = FLAG_COLORS[flagIndex % FLAG_COLORS.length]
   return [
     Math.round(r * t),

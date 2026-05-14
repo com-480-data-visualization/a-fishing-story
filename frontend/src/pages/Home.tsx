@@ -34,6 +34,7 @@ export default function Home() {
   const [mapInstance, setMapInstance] = useState<MaplibreMap | null>(null)
   const [selectedZone, setSelectedZone] = useState<Zone | null>(null)
   const [showChart, setShowChart] = useState(false)
+  const [showEEZ, setShowEEZ] = useState(false)
   const [flagPickerOpen, setFlagPickerOpen] = useState(false)
   const [lockedIndex, setLockedIndex] = useState<number | null>(null)
 
@@ -105,6 +106,7 @@ export default function Home() {
         onViewStateChange={onViewStateChange}
         locked={isPlaying}
         onMapInstance={setMapInstance}
+        showEEZ={showEEZ}
       />
 
       {mapInstance && viewState.zoom < 5.5 && ZONES.map(zone => {
@@ -122,12 +124,11 @@ export default function Home() {
 
       {showChart && (
         <div style={{
-          position: 'absolute', top: '50%', right: 20,
-          transform: 'translateY(-50%)',
-          display: 'flex', flexDirection: 'column', gap: 12,
+          position: 'absolute', top: 20, bottom: 96, right: 20,
+          display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', gap: 12,
           overflow: 'visible', pointerEvents: 'none', zIndex: 15,
         }}>
-          <ChartSlot naturalHeight={340} locked={lockedIndex === 0} onToggleLock={() => setLockedIndex(p => p === 0 ? null : 0)}>
+          <ChartSlot naturalHeight={290} locked={lockedIndex === 0} onToggleLock={() => setLockedIndex(p => p === 0 ? null : 0)}>
             <BubbleChart data={bubbleData} />
           </ChartSlot>
           <ChartSlot naturalHeight={252} locked={lockedIndex === 1} onToggleLock={() => setLockedIndex(p => p === 1 ? null : 1)}>
@@ -140,6 +141,28 @@ export default function Home() {
       )}
 
       <MapLegend maxHours={maxHours} />
+
+      {/* Toggle EEZ button */}
+      <button
+        onClick={() => setShowEEZ(prev => !prev)}
+        title={showEEZ ? 'Hide EEZ boundaries' : 'Show EEZ boundaries'}
+        style={{
+          position: 'absolute', top: 124, right: 20,
+          width: 44, height: 44,
+          background: showEEZ ? 'rgba(100,180,255,0.25)' : 'rgba(10,14,18,0.6)',
+          color: showEEZ ? 'rgba(120,180,255,1)' : 'white',
+          border: `1px solid ${showEEZ ? 'rgba(100,180,255,0.6)' : 'rgba(255,255,255,0.15)'}`,
+          borderRadius: 8,
+          cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 20,
+        }}
+      >
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5">
+          <circle cx="9" cy="9" r="7" />
+          <path d="M2 9h14M9 2c-2 2-3 4-3 7s1 5 3 7M9 2c2 2 3 4 3 7s-1 5-3 7" />
+        </svg>
+      </button>
 
       {/* Toggle charts button */}
       <button
