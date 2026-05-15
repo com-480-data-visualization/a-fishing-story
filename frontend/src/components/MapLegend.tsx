@@ -23,13 +23,18 @@ interface MapLegendProps {
 
 const BAR_H = 110
 
+// Inverse of log1p scale: given position t in [0,1], return the fishing_hours value
+function logToValue(t: number, max: number): number {
+  return Math.round(Math.expm1(t * Math.log1p(max)))
+}
+
 export default function MapLegend({ maxHours }: MapLegendProps) {
   const ticks = [
-    { label: fmt(maxHours),       pct: 100, highlight: 'rgb(255,200,0)'   },
-    { label: fmt(maxHours * 0.75),pct: 75,  highlight: null                },
-    { label: fmt(maxHours * 0.5), pct: 50,  highlight: null                },
-    { label: fmt(maxHours * 0.25),pct: 25,  highlight: null                },
-    { label: '0',                 pct: 0,   highlight: 'rgb(100,130,220)'  },
+    { label: fmt(maxHours),                    pct: 100, highlight: 'rgb(255,200,0)'  },
+    { label: fmt(logToValue(0.75, maxHours)),   pct: 75,  highlight: null              },
+    { label: fmt(logToValue(0.50, maxHours)),   pct: 50,  highlight: null              },
+    { label: fmt(logToValue(0.25, maxHours)),   pct: 25,  highlight: null              },
+    { label: '0',                              pct: 0,   highlight: 'rgb(100,130,220)' },
   ]
 
   return (
