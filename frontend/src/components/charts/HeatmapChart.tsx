@@ -20,6 +20,10 @@ function heatColor(t: number): string {
   return `rgb(${Math.round(10 - t * 10)}, ${Math.round(30 + t * 170)}, ${Math.round(80 + t * 120)})`
 }
 
+function fmtCount(n: number): string {
+  return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(Math.round(n))
+}
+
 export default function HeatmapChart({ data }: { data: TimeSeriesPoint[] }) {
   const [hoveredCell, setHoveredCell] = useState<{ year: number; month: number } | null>(null)
 
@@ -53,6 +57,24 @@ export default function HeatmapChart({ data }: { data: TimeSeriesPoint[] }) {
         </text>
         <text x={SVG_W / 2} y={36} textAnchor="middle" fill="rgba(255,255,255,0.5)" style={{ fontSize: 10 }}>
           monthly vessel presence · visible area
+        </text>
+
+        {/* Color-scale legend — scale is relative to the visible cells */}
+        <defs>
+          <linearGradient id="heat-legend" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor={heatColor(0)} />
+            <stop offset="50%" stopColor={heatColor(0.5)} />
+            <stop offset="100%" stopColor={heatColor(1)} />
+          </linearGradient>
+        </defs>
+        <rect x={SVG_W - 96} y={9} width={56} height={6} rx={2} fill="url(#heat-legend)" />
+        <text x={SVG_W - 99} y={15} textAnchor="end" dominantBaseline="middle"
+          fill="rgba(255,255,255,0.45)" style={{ fontSize: 8 }}>
+          {fmtCount(minCount)}
+        </text>
+        <text x={SVG_W - 37} y={15} dominantBaseline="middle"
+          fill="rgba(255,255,255,0.45)" style={{ fontSize: 8 }}>
+          {fmtCount(maxCount)}
         </text>
 
         {MONTH_LABELS.map((m, i) => (

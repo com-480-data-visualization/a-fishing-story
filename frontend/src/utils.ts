@@ -31,7 +31,7 @@ export function fishingColor(value: number, max: number): [number, number, numbe
     Math.round(t * 255),
     Math.round(t * 200),
     Math.round((1 - t) * 180),
-    200,
+    Math.round(50 + t * 180),
   ]
 }
 

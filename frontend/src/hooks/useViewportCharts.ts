@@ -7,8 +7,8 @@ import {
   fetchIllegalFishingChart,
   fetchTimeSeriesChart,
 } from '../api/fishing'
-import { getDonutColor } from '../components/charts/BubbleChart'
-import type { DonutItem } from '../components/charts/BubbleChart'
+import { getBubbleColor } from '../components/charts/BubbleChart'
+import type { BubbleItem } from '../components/charts/BubbleChart'
 import type { IllegalItem } from '../components/charts/LollipopChart'
 import type { TimeSeriesPoint } from '../components/charts/HeatmapChart'
 
@@ -19,7 +19,7 @@ export function useViewportCharts(
   viewState: MapViewState,
   date: string,
 ) {
-  const [bubbleData, setBubbleData] = useState<DonutItem[]>([])
+  const [bubbleData, setBubbleData] = useState<BubbleItem[]>([])
   const [illegalData, setIllegalData] = useState<IllegalItem[]>([])
   const [timeSeriesData, setTimeSeriesData] = useState<TimeSeriesPoint[]>([])
 
@@ -44,7 +44,7 @@ export function useViewportCharts(
           (chart.data ?? []).map((item, i) => ({
             label: item.label,
             value: item.value,
-            color: getDonutColor(i),
+            color: getBubbleColor(i),
           }))
         )
         setIllegalData(illegal.data ?? [])

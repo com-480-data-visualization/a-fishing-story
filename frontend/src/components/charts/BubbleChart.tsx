@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-export type DonutItem = {
+export type BubbleItem = {
   label: string
   value: number
   color: string
@@ -11,7 +11,9 @@ const PALETTE = [
   '#8C564B', '#E377C2', '#7F7F7F', '#BCBD22', '#17BECF',
 ]
 
-export function getDonutColor(index: number): string {
+const OTHER_COLOR = 'rgba(150,160,170,0.9)'
+
+export function getBubbleColor(index: number): string {
   return PALETTE[index % PALETTE.length]
 }
 
@@ -22,7 +24,7 @@ const PLOT_CY = 44 + (SVG_H - 44) / 2
 const MIN_R = 16
 const MAX_R = 58
 
-function packBubbles(items: (DonutItem & { r: number })[]) {
+function packBubbles(items: (BubbleItem & { r: number })[]) {
   const n = items.length
   const nodes = items.map((item, i) => ({
     ...item,
@@ -56,12 +58,18 @@ function packBubbles(items: (DonutItem & { r: number })[]) {
   return nodes
 }
 
-export default function BubbleChart({ data }: { data: DonutItem[] }) {
+export default function BubbleChart({ data }: { data: BubbleItem[] }) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
 
   if (!data.length) return null
 
-  const display = data.slice(0, 9)
+  // Show the top 9 countries; aggregate the long tail into a single "Other" bubble
+  // so the bubbles still read as a part-to-whole of the visible area.
+  const top = data.slice(0, 9)
+  const restSum = data.slice(9).reduce((sum, d) => sum + d.value, 0)
+  const display = restSum > 0.05
+    ? [...top, { label: 'Other', value: restSum, color: OTHER_COLOR }]
+    : top
   const maxVal = Math.max(...display.map(d => d.value), 1)
   const items = display.map(d => ({ ...d, r: MIN_R + (MAX_R - MIN_R) * Math.sqrt(d.value / maxVal) }))
   const nodes = packBubbles(items)
@@ -78,7 +86,7 @@ export default function BubbleChart({ data }: { data: DonutItem[] }) {
     }}>
       <svg width={SVG_W} height={SVG_H}>
         <text x={SVG_W / 2} y={20} textAnchor="middle" fill="white" style={{ fontSize: 16, fontWeight: 700 }}>
-          Boats by Country
+          Fishing Effort by Country
         </text>
         <text x={SVG_W / 2} y={36} textAnchor="middle" fill="rgba(255,255,255,0.5)" style={{ fontSize: 10 }}>
           visible area

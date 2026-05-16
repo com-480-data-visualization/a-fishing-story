@@ -23,6 +23,11 @@ export default function LollipopChart({ data }: { data: IllegalItem[] }) {
 
   if (!data.length) return null
 
+  // Adaptive axis: EEZ-violation rates are usually small, so a fixed 0-100%
+  // scale crushes every dot to the left. Scale to the largest value (+20% headroom).
+  const axisMax = Math.min(100, Math.max(...data.map(d => d.value), 1) * 1.2)
+  const gridTicks = [0.25, 0.5, 0.75, 1].map(f => f * axisMax)
+
   return (
     <div style={{
       width: SVG_W + 40,
@@ -38,12 +43,26 @@ export default function LollipopChart({ data }: { data: IllegalItem[] }) {
           Illegal Fishing
         </text>
         <text x={SVG_W / 2} y={36} textAnchor="middle" fill="rgba(255,255,255,0.5)" style={{ fontSize: 10 }}>
-          % of vessels in foreign EEZ · top 5 countries
+          % of fishing effort in foreign EEZ · top 5 countries
         </text>
+
+        {gridTicks.map((tick, i) => {
+          const x = PAD.left + (tick / axisMax) * TRACK_W
+          return (
+            <g key={`grid-${i}`}>
+              <line x1={x} x2={x} y1={PAD.top} y2={SVG_H - PAD.bottom}
+                stroke="rgba(255,255,255,0.06)" strokeWidth={1} />
+              <text x={x} y={SVG_H - PAD.bottom + 10} textAnchor="middle"
+                fill="rgba(255,255,255,0.35)" style={{ fontSize: 8 }}>
+                {tick.toFixed(tick < 10 ? 1 : 0)}%
+              </text>
+            </g>
+          )
+        })}
 
         {data.map((item, i) => {
           const y = PAD.top + i * ROW_H + ROW_H / 2
-          const lineX = PAD.left + (item.value / 100) * TRACK_W
+          const lineX = PAD.left + (item.value / axisMax) * TRACK_W
           const isHov = hoveredIndex === i
           const color = lollipopColor(item.value)
           const r = isHov ? 10 : 7
@@ -73,7 +92,7 @@ export default function LollipopChart({ data }: { data: IllegalItem[] }) {
               {isHov && (
                 <text x={lineX + r + 6} y={y} dominantBaseline="middle"
                   fill="rgba(255,255,255,0.6)" style={{ fontSize: 9 }}>
-                  {item.illegal_count} / {item.total_count}
+                  {Math.round(item.illegal_count)}h / {Math.round(item.total_count)}h
                 </text>
               )}
             </g>

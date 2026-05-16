@@ -61,13 +61,13 @@ export async function queryChart(
   const table = await conn.query(`
     SELECT
       flag AS label,
-      SUM(mmsi_present)::DOUBLE AS value
+      SUM(fishing_hours)::DOUBLE AS value
     FROM read_parquet('${url}')
     WHERE cell_ll_lon BETWEEN ${bbox.lon_min} AND ${bbox.lon_max}
       AND cell_ll_lat BETWEEN ${bbox.lat_min} AND ${bbox.lat_max}
       AND flag IS NOT NULL
     GROUP BY flag
-    HAVING SUM(mmsi_present) > 0
+    HAVING SUM(fishing_hours) > 0
     ORDER BY value DESC
   `)
 
@@ -92,9 +92,9 @@ export async function queryIllegalFishing(
   const table = await conn.query(`
     SELECT
       d.flag,
-      SUM(d.mmsi_present)::INTEGER AS total_count,
+      SUM(d.fishing_hours)::DOUBLE AS total_count,
       SUM(CASE WHEN e.eez_iso != d.flag AND e.eez_iso != 'INT'
-               THEN d.mmsi_present ELSE 0 END)::INTEGER AS illegal_count
+               THEN d.fishing_hours ELSE 0 END)::DOUBLE AS illegal_count
     FROM read_parquet('${dayUrl}') d
     JOIN read_parquet('${eezUrl}') e
       ON ROUND(d.cell_ll_lat::DOUBLE * 10)::INTEGER = ROUND(e.cell_ll_lat * 10)::INTEGER
