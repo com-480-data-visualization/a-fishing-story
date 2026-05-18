@@ -17,9 +17,18 @@ function fmt(v: number): string {
   return String(Math.round(v))
 }
 
+import { useState } from 'react'
+import { theme } from '../theme'
+
 interface MapLegendProps {
   maxHours: number
 }
+
+const FISHING_HOURS_INFO =
+  'Fishing hours estimate the time vessels spent actively fishing, inferred ' +
+  'from AIS vessel-tracking data by Global Fishing Watch. Within each map grid ' +
+  'cell, the hours of every vessel are summed, so a single cell can exceed 24 ' +
+  'hours in a day.'
 
 const BAR_H = 110
 
@@ -29,6 +38,8 @@ function logToValue(t: number, max: number): number {
 }
 
 export default function MapLegend({ maxHours }: MapLegendProps) {
+  const [infoOpen, setInfoOpen] = useState(false)
+
   const ticks = [
     { label: fmt(maxHours),                    pct: 100, highlight: 'rgb(255,200,0)'  },
     { label: fmt(logToValue(0.75, maxHours)),   pct: 75,  highlight: null              },
@@ -43,10 +54,11 @@ export default function MapLegend({ maxHours }: MapLegendProps) {
       top: 20,
       left: 20,
       zIndex: 20,
-      background: 'rgba(7, 11, 16, 0.78)',
+      background: theme.surfaceBg,
       backdropFilter: 'blur(14px)',
       WebkitBackdropFilter: 'blur(14px)',
-      border: '1px solid rgba(255,255,255,0.09)',
+      border: `1px solid ${theme.border}`,
+      boxShadow: theme.shadowSoft,
       borderRadius: 14,
       padding: '12px 14px 12px 12px',
       pointerEvents: 'none',
@@ -54,18 +66,56 @@ export default function MapLegend({ maxHours }: MapLegendProps) {
       minWidth: 110,
     }}>
       <div style={{
-        fontSize: 11,
-        fontWeight: 700,
-        color: 'rgba(255,255,255,0.75)',
-        letterSpacing: '0.06em',
-        textTransform: 'uppercase',
+        display: 'flex', alignItems: 'center', gap: 5,
         marginBottom: 3,
       }}>
-        Fishing Hours
+        <span style={{
+          fontSize: 11,
+          fontWeight: 700,
+          color: theme.textPrimary,
+          letterSpacing: '0.06em',
+          textTransform: 'uppercase',
+        }}>
+          Fishing Hours
+        </span>
+        <button
+          onClick={() => setInfoOpen(o => !o)}
+          title="About fishing hours"
+          style={{
+            width: 16, height: 16, borderRadius: '50%',
+            border: `1px solid ${infoOpen ? theme.accentBorder : theme.border}`,
+            background: infoOpen ? theme.accentBg : 'transparent',
+            color: infoOpen ? theme.accent : theme.textMuted,
+            cursor: 'pointer', padding: 0,
+            fontSize: 10, fontWeight: 700, fontStyle: 'italic',
+            fontFamily: 'Georgia, serif', lineHeight: 1,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            pointerEvents: 'auto',
+          }}
+        >
+          i
+        </button>
       </div>
+
+      {infoOpen && (
+        <div style={{
+          position: 'absolute', top: 10, left: 'calc(100% + 8px)',
+          width: 210,
+          background: theme.panelBg,
+          border: `1px solid ${theme.border}`,
+          borderRadius: 8,
+          boxShadow: theme.shadowPanel,
+          padding: '10px 12px',
+          fontSize: 11, lineHeight: 1.55, color: theme.textSecondary,
+          pointerEvents: 'auto',
+          textTransform: 'none', letterSpacing: 'normal', fontWeight: 400,
+        }}>
+          {FISHING_HOURS_INFO}
+        </div>
+      )}
       <div style={{
         fontSize: 9,
-        color: 'rgba(255,255,255,0.35)',
+        color: theme.textMuted,
         letterSpacing: '0.04em',
         marginBottom: 10,
       }}>
@@ -96,10 +146,10 @@ export default function MapLegend({ maxHours }: MapLegendProps) {
                 whiteSpace: 'nowrap',
               }}
             >
-              <div style={{ width: 5, height: 1, background: 'rgba(255,255,255,0.25)' }} />
+              <div style={{ width: 5, height: 1, background: theme.borderStrong }} />
               <span style={{
                 fontSize: 9,
-                color: highlight ?? 'rgba(255,255,255,0.4)',
+                color: highlight ?? theme.textMuted,
                 fontWeight: highlight ? 600 : 400,
                 fontVariantNumeric: 'tabular-nums',
               }}>

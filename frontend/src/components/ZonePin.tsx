@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { Zone } from '../data/zones'
+import { theme } from '../theme'
 
 interface ZonePinProps {
   zone: Zone
@@ -50,13 +51,14 @@ export default function ZonePin({ zone, isSelected, onZoneClick }: ZonePinProps)
           transform: 'translateX(-50%)',
           marginTop: 8,
           padding: '5px 12px',
-          background: 'rgba(10,14,18,0.9)',
-          color: 'white',
+          background: theme.panelBg,
+          color: theme.textPrimary,
           fontSize: 12,
           fontWeight: 600,
           borderRadius: 6,
           whiteSpace: 'nowrap',
-          border: `1px solid ${zone.color}55`,
+          border: `1px solid ${zone.color}77`,
+          boxShadow: theme.shadowSoft,
           backdropFilter: 'blur(6px)',
           pointerEvents: 'none',
           letterSpacing: '0.02em',

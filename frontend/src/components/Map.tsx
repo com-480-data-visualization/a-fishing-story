@@ -22,6 +22,7 @@ interface MapViewProps {
   onViewStateChange: (vs: MapViewState) => void
   locked?: boolean
   onMapInstance?: (map: MaplibreMap) => void
+  onResize?: () => void
   showEEZ?: boolean
 }
 
@@ -33,19 +34,34 @@ export default function MapView({
   onViewStateChange,
   locked,
   onMapInstance,
+  onResize,
   showEEZ = false,
 }: MapViewProps) {
   const mapRef = useRef<MapRef>(null)
   const eezReadyRef = useRef(false)
   const showEEZRef = useRef(showEEZ)
-  showEEZRef.current = showEEZ
   const res = resolution
 
   useEffect(() => {
+    // Mirror into a ref so the map's onLoad handler can read the latest value.
+    showEEZRef.current = showEEZ
     const map = mapRef.current?.getMap()
     if (!map || !eezReadyRef.current) return
     map.setLayoutProperty('eez-lines', 'visibility', showEEZ ? 'visible' : 'none')
   }, [showEEZ])
+
+  // Keep MapLibre in sync when the container resizes (e.g. the chart panel
+  // pushing the map area), and notify the parent so viewport-scoped data refetches.
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const ro = new ResizeObserver(() => {
+      mapRef.current?.getMap()?.resize()
+      onResize?.()
+    })
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [containerRef, onResize])
 
   const layers = useMemo(() => {
     const entries = Array.from(data.entries())

@@ -1,4 +1,5 @@
 import type { Zone } from '../data/zones'
+import { theme } from '../theme'
 
 interface ZoneInfoPanelProps {
   zone: Zone
@@ -15,11 +16,12 @@ export default function ZoneInfoPanel({ zone, onClose }: ZoneInfoPanelProps) {
       bottom: 70,
       width: 370,
       padding: '16px 20px',
-      background: 'rgba(10, 14, 18, 0.75)',
-      border: `1px solid ${zone.color}44`,
+      background: theme.panelBg,
+      border: `1px solid ${zone.color}66`,
       borderRadius: 16,
       backdropFilter: 'blur(10px)',
-      color: 'white',
+      boxShadow: theme.shadowPanel,
+      color: theme.textPrimary,
       zIndex: 15,
       animation: 'zoneFadeUp 0.3s ease both',
       pointerEvents: 'auto',
@@ -37,7 +39,7 @@ export default function ZoneInfoPanel({ zone, onClose }: ZoneInfoPanelProps) {
         <button
           onClick={onClose}
           style={{
-            background: 'none', border: 'none', color: 'rgba(255,255,255,0.45)',
+            background: 'none', border: 'none', color: theme.textMuted,
             cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '0 2px',
             flexShrink: 0, marginLeft: 8,
           }}
@@ -46,7 +48,7 @@ export default function ZoneInfoPanel({ zone, onClose }: ZoneInfoPanelProps) {
         </button>
       </div>
       <div style={{
-        fontSize: 13, lineHeight: 1.7, color: 'rgba(255,255,255,0.8)',
+        fontSize: 13, lineHeight: 1.7, color: theme.textSecondary,
         maxHeight: 260, overflowY: 'auto',
         paddingRight: 4,
       }}>

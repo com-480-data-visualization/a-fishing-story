@@ -7,9 +7,8 @@ import {
   fetchIllegalFishingChart,
   fetchTimeSeriesChart,
 } from '../api/fishing'
-import { getBubbleColor } from '../components/charts/BubbleChart'
-import type { BubbleItem } from '../components/charts/BubbleChart'
-import type { IllegalItem } from '../components/charts/LollipopChart'
+import type { BarItem } from '../components/charts/BarChart'
+import type { IllegalItem } from '../components/charts/IllegalFishingChart'
 import type { TimeSeriesPoint } from '../components/charts/HeatmapChart'
 
 const DEBOUNCE_MS = 300
@@ -18,8 +17,11 @@ export function useViewportCharts(
   containerRef: RefObject<HTMLDivElement | null>,
   viewState: MapViewState,
   date: string,
+  // Bump to force a refetch when the viewport bbox changed without viewState
+  // changing — e.g. the map container was resized by the chart panel.
+  revalidateKey: number = 0,
 ) {
-  const [bubbleData, setBubbleData] = useState<BubbleItem[]>([])
+  const [bubbleData, setBubbleData] = useState<BarItem[]>([])
   const [illegalData, setIllegalData] = useState<IllegalItem[]>([])
   const [timeSeriesData, setTimeSeriesData] = useState<TimeSeriesPoint[]>([])
 
@@ -41,10 +43,9 @@ export function useViewportCharts(
           fetchTimeSeriesChart(bbox, ctrl.signal),
         ])
         setBubbleData(
-          (chart.data ?? []).map((item, i) => ({
+          (chart.data ?? []).map(item => ({
             label: item.label,
             value: item.value,
-            color: getBubbleColor(i),
           }))
         )
         setIllegalData(illegal.data ?? [])
@@ -59,7 +60,7 @@ export function useViewportCharts(
       ctrl.abort()
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [date, longitude, latitude, zoom])
+  }, [date, longitude, latitude, zoom, revalidateKey])
 
   return { bubbleData, illegalData, timeSeriesData }
 }

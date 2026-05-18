@@ -1,5 +1,6 @@
 import { useRef } from 'react'
 import { DATE_MIN, DATE_MAX } from '../hooks/useMapState'
+import { theme } from '../theme'
 
 const MONTHS_EN = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -52,7 +53,7 @@ export default function Timeline({ currentDate, isPlaying, onSeek, onPlayPause }
   const progress = (currentIdx / TOTAL_DAYS) * 100
   const isDraggingRef = useRef(false)
 
-  const sliderBg = `linear-gradient(to right, #38bdf8 ${progress}%, rgba(255,255,255,0.12) ${progress}%)`
+  const sliderBg = `linear-gradient(to right, ${theme.accent} ${progress}%, rgba(15,23,42,0.12) ${progress}%)`
 
   return (
     <>
@@ -75,13 +76,13 @@ export default function Timeline({ currentDate, isPlaying, onSeek, onPlayPause }
           height: 14px;
           border-radius: 50%;
           background: #fff;
-          box-shadow: 0 0 0 3px rgba(56,189,248,0.45), 0 2px 6px rgba(0,0,0,0.4);
+          box-shadow: 0 0 0 3px ${theme.accent}, 0 1px 4px rgba(20,30,50,0.3);
           cursor: pointer;
           transition: transform 0.12s, box-shadow 0.12s;
         }
         .tl-slider:hover::-webkit-slider-thumb {
           transform: scale(1.3);
-          box-shadow: 0 0 0 5px rgba(56,189,248,0.3), 0 2px 8px rgba(0,0,0,0.5);
+          box-shadow: 0 0 0 5px rgba(37,99,235,0.35), 0 1px 5px rgba(20,30,50,0.35);
         }
         .tl-slider::-moz-range-thumb {
           width: 14px;
@@ -89,27 +90,27 @@ export default function Timeline({ currentDate, isPlaying, onSeek, onPlayPause }
           border-radius: 50%;
           background: #fff;
           border: none;
-          box-shadow: 0 0 0 3px rgba(56,189,248,0.45);
+          box-shadow: 0 0 0 3px ${theme.accent};
           cursor: pointer;
         }
         .tl-play-btn {
           transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
         }
         .tl-play-btn:hover {
-          background: rgba(255,255,255,0.14) !important;
+          background: rgba(15,23,42,0.06) !important;
           transform: scale(1.06);
         }
         .tl-play-btn:active { transform: scale(0.96); }
       `}</style>
 
       <div style={{
-        position: 'fixed',
+        position: 'absolute',
         bottom: 0, left: 0, right: 0,
         height: 80,
-        background: 'rgba(7, 11, 16, 0.88)',
+        background: theme.panelBg,
         backdropFilter: 'blur(18px)',
         WebkitBackdropFilter: 'blur(18px)',
-        borderTop: '1px solid rgba(255,255,255,0.07)',
+        borderTop: `1px solid ${theme.border}`,
         display: 'flex',
         alignItems: 'center',
         gap: 20,
@@ -127,14 +128,12 @@ export default function Timeline({ currentDate, isPlaying, onSeek, onPlayPause }
             flexShrink: 0,
             width: 44, height: 44,
             borderRadius: '50%',
-            border: '1px solid rgba(255,255,255,0.15)',
-            background: isPlaying
-              ? 'rgba(56,189,248,0.18)'
-              : 'rgba(255,255,255,0.07)',
-            color: 'white',
+            border: `1px solid ${isPlaying ? theme.accentBorder : theme.border}`,
+            background: isPlaying ? theme.accentBg : 'rgba(15,23,42,0.04)',
+            color: isPlaying ? theme.accent : theme.textPrimary,
             cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: isPlaying ? '0 0 16px rgba(56,189,248,0.25)' : 'none',
+            boxShadow: isPlaying ? '0 0 14px rgba(37,99,235,0.2)' : 'none',
           }}
         >
           {isPlaying ? (
@@ -184,13 +183,13 @@ export default function Timeline({ currentDate, isPlaying, onSeek, onPlayPause }
                 <div style={{
                   width: 1,
                   height: 4,
-                  background: 'rgba(255,255,255,0.2)',
+                  background: theme.borderStrong,
                 }} />
                 <span style={{
                   fontSize: 10,
                   color: y === Number(year)
-                    ? 'rgba(56,189,248,0.9)'
-                    : 'rgba(255,255,255,0.3)',
+                    ? theme.accent
+                    : theme.textMuted,
                   fontWeight: y === Number(year) ? 600 : 400,
                   letterSpacing: '0.04em',
                 }}>
@@ -210,7 +209,7 @@ export default function Timeline({ currentDate, isPlaying, onSeek, onPlayPause }
           <div style={{
             fontSize: 26,
             fontWeight: 700,
-            color: 'white',
+            color: theme.textPrimary,
             letterSpacing: '-0.5px',
             fontVariantNumeric: 'tabular-nums',
           }}>
@@ -218,7 +217,7 @@ export default function Timeline({ currentDate, isPlaying, onSeek, onPlayPause }
           </div>
           <div style={{
             fontSize: 11,
-            color: 'rgba(255,255,255,0.45)',
+            color: theme.textMuted,
             letterSpacing: '0.06em',
             textTransform: 'uppercase',
           }}>

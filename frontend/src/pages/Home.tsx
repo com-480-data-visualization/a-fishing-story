@@ -1,16 +1,14 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { MapViewState } from '@deck.gl/core'
 import type { Map as MaplibreMap } from 'maplibre-gl'
 
 import MapView from '../components/Map'
 import ZonePin from '../components/ZonePin'
 import ZoneInfoPanel from '../components/ZoneInfoPanel'
-import ChartSlot, { COMPACT_SCALE } from '../components/charts/ChartSlot'
-import BubbleChart from '../components/charts/BubbleChart'
-import LollipopChart from '../components/charts/LollipopChart'
-import HeatmapChart from '../components/charts/HeatmapChart'
+import ChartPanel from '../components/ChartPanel'
 import Timeline from '../components/Timeline'
 import MapLegend from '../components/MapLegend'
+import MapControls from '../components/MapControls'
 import FlagPicker from '../components/FlagPicker'
 
 import { ZONES } from '../data/zones'
@@ -33,12 +31,16 @@ export default function Home() {
 
   const [mapInstance, setMapInstance] = useState<MaplibreMap | null>(null)
   const [selectedZone, setSelectedZone] = useState<Zone | null>(null)
-  const [showChart, setShowChart] = useState(false)
+  const [panelOpen, setPanelOpen] = useState(false)
   const [showEEZ, setShowEEZ] = useState(false)
   const [flagPickerOpen, setFlagPickerOpen] = useState(false)
-  const [lockedIndex, setLockedIndex] = useState<number | null>(null)
 
-  const { bubbleData, illegalData, timeSeriesData } = useViewportCharts(containerRef, viewState, currentDate)
+  // Bumped whenever the map container resizes so viewport-scoped charts refetch.
+  const [resizeNonce, setResizeNonce] = useState(0)
+  const handleMapResize = useCallback(() => setResizeNonce(n => n + 1), [])
+
+  const { bubbleData, illegalData, timeSeriesData } =
+    useViewportCharts(containerRef, viewState, currentDate, resizeNonce)
 
   const maxHours = useMemo(() => {
     let max = 0
@@ -60,7 +62,7 @@ export default function Home() {
       transitionDuration: 1400,
     } as MapViewState)
     setSelectedZone(zone)
-    setShowChart(true)
+    setPanelOpen(true)
   }
 
   useEffect(() => {
@@ -86,7 +88,7 @@ export default function Home() {
   }, [isPlaying, play, pause])
 
   return (
-    <div style={{ width: '100%', height: '100svh', position: 'relative' }}>
+    <div style={{ width: '100%', height: '100svh', display: 'flex', overflow: 'hidden' }}>
       <style>{`
         @keyframes zoneBeaconPulse {
           0%   { transform: translate(-50%, -50%) scale(0.4); opacity: 0.9; }
@@ -98,106 +100,66 @@ export default function Home() {
         }
       `}</style>
 
-      <MapView
-        data={data}
-        viewState={viewState}
-        resolution={resolution}
-        containerRef={containerRef}
-        onViewStateChange={onViewStateChange}
-        locked={isPlaying}
-        onMapInstance={setMapInstance}
-        showEEZ={showEEZ}
-      />
+      {/* Map area — flexes to fill the space left by the chart panel */}
+      <div style={{ position: 'relative', flex: 1, minWidth: 0, overflow: 'hidden' }}>
+        <MapView
+          data={data}
+          viewState={viewState}
+          resolution={resolution}
+          containerRef={containerRef}
+          onViewStateChange={onViewStateChange}
+          locked={isPlaying}
+          onMapInstance={setMapInstance}
+          onResize={handleMapResize}
+          showEEZ={showEEZ}
+        />
 
-      {mapInstance && viewState.zoom < 5.5 && ZONES.map(zone => {
-        const px = mapInstance.project([zone.lon, zone.lat])
-        return (
-          <div key={zone.id} style={{ position: 'absolute', left: px.x, top: px.y, zIndex: 30, pointerEvents: 'auto' }}>
-            <ZonePin zone={zone} isSelected={selectedZone?.id === zone.id} onZoneClick={handleZoneClick} />
-          </div>
-        )
-      })}
+        {mapInstance && viewState.zoom < 5.5 && ZONES.map(zone => {
+          const px = mapInstance.project([zone.lon, zone.lat])
+          return (
+            <div key={zone.id} style={{ position: 'absolute', left: px.x, top: px.y, zIndex: 10, pointerEvents: 'auto' }}>
+              <ZonePin zone={zone} isSelected={selectedZone?.id === zone.id} onZoneClick={handleZoneClick} />
+            </div>
+          )
+        })}
 
-      {selectedZone && (
-        <ZoneInfoPanel zone={selectedZone} onClose={() => setSelectedZone(null)} />
-      )}
+        {selectedZone && (
+          <ZoneInfoPanel zone={selectedZone} onClose={() => setSelectedZone(null)} />
+        )}
 
-      {showChart && (
-        <div style={{
-          position: 'absolute', top: 20, bottom: 96, right: 20,
-          display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', gap: 12,
-          overflow: 'visible', pointerEvents: 'none', zIndex: 15,
-        }}>
-          <ChartSlot naturalHeight={290} locked={lockedIndex === 0} onToggleLock={() => setLockedIndex(p => p === 0 ? null : 0)}>
-            <BubbleChart data={bubbleData} />
-          </ChartSlot>
-          <ChartSlot naturalHeight={252} locked={lockedIndex === 1} onToggleLock={() => setLockedIndex(p => p === 1 ? null : 1)}>
-            <LollipopChart data={illegalData} />
-          </ChartSlot>
-          <ChartSlot naturalHeight={247} expandOffset={-Math.round(247 * (1 - COMPACT_SCALE))} locked={lockedIndex === 2} onToggleLock={() => setLockedIndex(p => p === 2 ? null : 2)}>
-            <HeatmapChart data={timeSeriesData} />
-          </ChartSlot>
-        </div>
-      )}
+        <MapLegend maxHours={maxHours} />
 
-      <MapLegend maxHours={maxHours} />
+        <MapControls
+          panelOpen={panelOpen}
+          onTogglePanel={() => setPanelOpen(prev => !prev)}
+          flagActive={selectedFlag !== null}
+          flagPickerOpen={flagPickerOpen}
+          onToggleFlagPicker={() => setFlagPickerOpen(prev => !prev)}
+          showEEZ={showEEZ}
+          onToggleEEZ={() => setShowEEZ(prev => !prev)}
+        />
 
-      {/* Toggle EEZ button */}
-      <button
-        onClick={() => setShowEEZ(prev => !prev)}
-        title={showEEZ ? 'Hide EEZ boundaries' : 'Show EEZ boundaries'}
-        style={{
-          position: 'absolute', top: 124, right: 20,
-          width: 44, height: 44,
-          background: showEEZ ? 'rgba(100,180,255,0.25)' : 'rgba(10,14,18,0.6)',
-          color: showEEZ ? 'rgba(120,180,255,1)' : 'white',
-          border: `1px solid ${showEEZ ? 'rgba(100,180,255,0.6)' : 'rgba(255,255,255,0.15)'}`,
-          borderRadius: 8,
-          cursor: 'pointer',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 20,
-        }}
-      >
-        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5">
-          <circle cx="9" cy="9" r="7" />
-          <path d="M2 9h14M9 2c-2 2-3 4-3 7s1 5 3 7M9 2c2 2 3 4 3 7s-1 5-3 7" />
-        </svg>
-      </button>
+        <FlagPicker
+          key={flagPickerOpen ? 'open' : 'closed'}
+          selectedFlag={selectedFlag}
+          onSelect={setSelectedFlag}
+          open={flagPickerOpen}
+          onClose={() => setFlagPickerOpen(false)}
+        />
 
-      {/* Toggle charts button */}
-      <button
-        onClick={() => { setShowChart(prev => !prev); setFlagPickerOpen(false) }}
-        title={showChart ? 'Hide charts' : 'Show charts'}
-        style={{
-          position: 'absolute', top: 20, right: 20,
-          width: 44, height: 44,
-          background: 'rgba(10,14,18,0.6)', color: 'white',
-          border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8,
-          cursor: 'pointer',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 20,
-        }}
-      >
-        <svg width="18" height="18" viewBox="0 0 18 18" fill="currentColor">
-          <rect x="1"  y="10" width="4" height="7" rx="1" opacity={showChart ? 1 : 0.5} />
-          <rect x="7"  y="5"  width="4" height="12" rx="1" opacity={showChart ? 1 : 0.5} />
-          <rect x="13" y="1"  width="4" height="16" rx="1" opacity={showChart ? 1 : 0.5} />
-        </svg>
-      </button>
+        <Timeline
+          currentDate={currentDate}
+          isPlaying={isPlaying}
+          onSeek={seek}
+          onPlayPause={() => isPlaying ? pause() : play()}
+        />
+      </div>
 
-      <FlagPicker
-        selectedFlag={selectedFlag}
-        onSelect={setSelectedFlag}
-        open={flagPickerOpen}
-        onOpenChange={v => { setFlagPickerOpen(v); if (v) setShowChart(false) }}
-      />
-
-      {/* Timeline */}
-      <Timeline
-        currentDate={currentDate}
-        isPlaying={isPlaying}
-        onSeek={seek}
-        onPlayPause={() => isPlaying ? pause() : play()}
+      <ChartPanel
+        open={panelOpen}
+        bubbleData={bubbleData}
+        illegalData={illegalData}
+        timeSeriesData={timeSeriesData}
       />
     </div>
   )
