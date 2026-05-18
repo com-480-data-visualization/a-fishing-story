@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
 import type { MapViewState } from '@deck.gl/core'
-import { zoomToResolution, nextDay } from '../utils'
+import { zoomToResolution, nextDay, MAX_FLAGS } from '../utils'
 import { useDataController } from './useDataController'
 import type { FishingCell } from '../api/fishing'
 import { DATE_MIN, DATE_MAX } from '../constants'
@@ -47,11 +47,10 @@ export function useMapState(initialDate: string, initialViewState: MapViewState)
     viewState: initialViewState,
   })
 
-  const [selectedFlag, setSelectedFlag] = useState<string | null>(null)
+  const [selectedFlags, setSelectedFlags] = useState<string[]>([])
 
   const currentResolution = zoomToResolution(state.viewState.zoom)
-  const flags = selectedFlag ? [selectedFlag] : []
-  const { data, loading } = useDataController(state.currentDate, currentResolution, flags, containerRef, state.viewState)
+  const { data, loading } = useDataController(state.currentDate, currentResolution, selectedFlags, containerRef, state.viewState)
 
   const [displayData, setDisplayData] = useState<Map<string, FishingCell[]>>(data)
   useEffect(() => {
@@ -63,6 +62,16 @@ export function useMapState(initialDate: string, initialViewState: MapViewState)
     const id = setInterval(() => dispatch({ type: 'TICK' }), PLAY_INTERVAL_MS)
     return () => clearInterval(id)
   }, [state.isPlaying])
+
+  // Toggle a flag in/out of the selection, capped at MAX_FLAGS.
+  const toggleFlag = useCallback((flag: string) => {
+    setSelectedFlags(prev => {
+      if (prev.includes(flag)) return prev.filter(f => f !== flag)
+      if (prev.length >= MAX_FLAGS) return prev
+      return [...prev, flag]
+    })
+  }, [])
+  const clearFlags = useCallback(() => setSelectedFlags([]), [])
 
   const onViewStateChange = useCallback((vs: MapViewState) => dispatch({ type: 'SET_VIEW_STATE', viewState: vs }), [])
   const seek  = useCallback((date: string) => dispatch({ type: 'SEEK', date }), [])
@@ -77,8 +86,9 @@ export function useMapState(initialDate: string, initialViewState: MapViewState)
     containerRef,
     currentDate: state.currentDate,
     isPlaying: state.isPlaying,
-    selectedFlag,
-    setSelectedFlag,
+    selectedFlags,
+    toggleFlag,
+    clearFlags,
     onViewStateChange,
     seek,
     play,

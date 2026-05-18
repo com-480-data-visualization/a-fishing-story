@@ -25,7 +25,7 @@ export default function Home() {
   const {
     data, viewState, resolution, containerRef,
     currentDate, isPlaying,
-    selectedFlag, setSelectedFlag,
+    selectedFlags, toggleFlag, clearFlags,
     onViewStateChange, seek, play, pause,
   } = useMapState(INITIAL_DATE, INITIAL_VIEW)
 
@@ -127,12 +127,12 @@ export default function Home() {
           <ZoneInfoPanel zone={selectedZone} onClose={() => setSelectedZone(null)} />
         )}
 
-        <MapLegend maxHours={maxHours} />
+        <MapLegend maxHours={maxHours} selectedFlags={selectedFlags} />
 
         <MapControls
           panelOpen={panelOpen}
           onTogglePanel={() => setPanelOpen(prev => !prev)}
-          flagActive={selectedFlag !== null}
+          flagActive={selectedFlags.length > 0}
           flagPickerOpen={flagPickerOpen}
           onToggleFlagPicker={() => setFlagPickerOpen(prev => !prev)}
           showEEZ={showEEZ}
@@ -141,10 +141,10 @@ export default function Home() {
 
         <FlagPicker
           key={flagPickerOpen ? 'open' : 'closed'}
-          selectedFlag={selectedFlag}
-          onSelect={setSelectedFlag}
+          selectedFlags={selectedFlags}
+          onToggle={toggleFlag}
+          onClear={clearFlags}
           open={flagPickerOpen}
-          onClose={() => setFlagPickerOpen(false)}
         />
 
         <Timeline

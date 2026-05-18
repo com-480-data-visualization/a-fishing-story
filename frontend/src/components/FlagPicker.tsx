@@ -2,21 +2,24 @@ import { useState, useRef, useEffect } from 'react'
 import { getCountryName, getRealCountryCodes } from '../data/countryNames'
 import metaJson from '../data/meta.json'
 import { theme } from '../theme'
+import { FLAG_COLORS, MAX_FLAGS } from '../utils'
 
 const COUNTRIES = getRealCountryCodes(metaJson.flags)
 
 interface FlagPickerProps {
-  selectedFlag: string | null
-  onSelect: (flag: string | null) => void
+  selectedFlags: string[]
+  onToggle: (flag: string) => void
+  onClear: () => void
   open: boolean
-  onClose: () => void
 }
 
 /**
- * Searchable country-filter dropdown. Rendered as a popover anchored under the
- * country button in MapControls; the button itself lives in MapControls.
+ * Searchable, multi-select country-filter dropdown. Up to MAX_FLAGS flags can
+ * be selected; each selected flag is shown with the solid hue used to render
+ * its layer on the map. Rendered as a popover anchored under the country
+ * button in MapControls.
  */
-export default function FlagPicker({ selectedFlag, onSelect, open, onClose }: FlagPickerProps) {
+export default function FlagPicker({ selectedFlags, onToggle, onClear, open }: FlagPickerProps) {
   const [search, setSearch] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -30,10 +33,7 @@ export default function FlagPicker({ selectedFlag, onSelect, open, onClose }: Fl
     ? COUNTRIES.filter(c => getCountryName(c).toLowerCase().includes(search.toLowerCase()))
     : COUNTRIES
 
-  const choose = (flag: string | null) => {
-    onSelect(flag)
-    onClose()
-  }
+  const atLimit = selectedFlags.length >= MAX_FLAGS
 
   return (
     <div style={{
@@ -62,38 +62,50 @@ export default function FlagPicker({ selectedFlag, onSelect, open, onClose }: Fl
             color: theme.textPrimary, fontSize: 13, outline: 'none',
           }}
         />
+        <div style={{
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          marginTop: 7, fontSize: 11, color: theme.textMuted,
+        }}>
+          <span>{selectedFlags.length} / {MAX_FLAGS} selected</span>
+          {selectedFlags.length > 0 && (
+            <span
+              onClick={onClear}
+              style={{ cursor: 'pointer', color: theme.accent, fontWeight: 600 }}
+            >
+              Clear all
+            </span>
+          )}
+        </div>
       </div>
 
       <div style={{ maxHeight: 280, overflowY: 'auto' }}>
-        <div
-          onClick={() => choose(null)}
-          style={{
-            padding: '8px 14px', cursor: 'pointer', fontSize: 13,
-            color: selectedFlag === null ? theme.accent : theme.textSecondary,
-            background: selectedFlag === null ? theme.accentBg : 'transparent',
-            fontWeight: selectedFlag === null ? 600 : 400,
-            borderBottom: `1px solid ${theme.borderSubtle}`,
-          }}
-        >
-          All countries
-        </div>
-
         {filtered.map(code => {
-          const name = getCountryName(code)
-          const active = selectedFlag === code
+          const idx = selectedFlags.indexOf(code)
+          const active = idx >= 0
+          const disabled = !active && atLimit
+          const rgb = active ? FLAG_COLORS[idx % FLAG_COLORS.length] : null
           return (
             <div
               key={code}
-              onClick={() => choose(code)}
+              onClick={() => { if (!disabled) onToggle(code) }}
+              title={disabled ? `Limit of ${MAX_FLAGS} flags reached` : undefined}
               style={{
-                padding: '7px 14px', cursor: 'pointer', fontSize: 13,
-                color: active ? theme.accent : theme.textSecondary,
+                padding: '7px 14px',
+                cursor: disabled ? 'not-allowed' : 'pointer',
+                fontSize: 13,
+                opacity: disabled ? 0.4 : 1,
+                color: active ? theme.textPrimary : theme.textSecondary,
                 background: active ? theme.accentBg : 'transparent',
                 fontWeight: active ? 600 : 400,
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                display: 'flex', alignItems: 'center', gap: 8,
               }}
             >
-              <span>{name}</span>
+              <span style={{
+                width: 12, height: 12, borderRadius: 3, flexShrink: 0,
+                border: `1px solid ${theme.border}`,
+                background: rgb ? `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})` : 'transparent',
+              }} />
+              <span style={{ flex: 1 }}>{getCountryName(code)}</span>
               <span style={{ fontSize: 11, color: theme.textFaint }}>{code}</span>
             </div>
           )

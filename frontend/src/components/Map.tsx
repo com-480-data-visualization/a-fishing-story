@@ -65,10 +65,18 @@ export default function MapView({
 
   const layers = useMemo(() => {
     const entries = Array.from(data.entries())
-    const isMultiFlag = entries.length > 1
+
+    // Single max across every layer, so flag colours share one brightness
+    // scale and are comparable in magnitude with each other.
+    let maxHours = 1
+    for (const [, cells] of entries)
+      for (const cell of cells)
+        if (cell.fishing_hours > maxHours) maxHours = cell.fishing_hours
 
     return entries.map(([flag, cells], index) => {
-      const maxHours = cells.reduce((max, d) => Math.max(max, d.fishing_hours), 1)
+      // An empty key is the unfiltered global layer; any real flag (even a
+      // single one) gets its own solid hue from the FLAG_COLORS palette.
+      const useFlagColor = flag !== ''
 
       return new SolidPolygonLayer<FishingCell>({
         id: `fishing-grid-${flag || 'global'}`,
@@ -79,7 +87,7 @@ export default function MapView({
           [d.lon + res, d.lat + res],
           [d.lon, d.lat + res],
         ],
-        getFillColor: isMultiFlag
+        getFillColor: useFlagColor
           ? d => flagColor(index, d.fishing_hours, maxHours)
           : d => fishingColor(d.fishing_hours, maxHours),
         extruded: false,

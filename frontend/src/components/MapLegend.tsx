@@ -19,9 +19,12 @@ function fmt(v: number): string {
 
 import { useState } from 'react'
 import { theme } from '../theme'
+import { FLAG_COLORS } from '../utils'
+import { getCountryName } from '../data/countryNames'
 
 interface MapLegendProps {
   maxHours: number
+  selectedFlags: string[]
 }
 
 const FISHING_HOURS_INFO =
@@ -37,8 +40,78 @@ function logToValue(t: number, max: number): number {
   return Math.round(Math.expm1(t * Math.log1p(max)))
 }
 
-export default function MapLegend({ maxHours }: MapLegendProps) {
+const CONTAINER_STYLE: React.CSSProperties = {
+  position: 'absolute',
+  top: 20,
+  left: 20,
+  zIndex: 20,
+  background: theme.surfaceBg,
+  backdropFilter: 'blur(14px)',
+  WebkitBackdropFilter: 'blur(14px)',
+  border: `1px solid ${theme.border}`,
+  boxShadow: theme.shadowSoft,
+  borderRadius: 14,
+  padding: '12px 14px 12px 12px',
+  userSelect: 'none',
+  minWidth: 110,
+}
+
+const TITLE_STYLE: React.CSSProperties = {
+  fontSize: 11,
+  fontWeight: 700,
+  color: theme.textPrimary,
+  letterSpacing: '0.06em',
+  textTransform: 'uppercase',
+}
+
+export default function MapLegend({ maxHours, selectedFlags }: MapLegendProps) {
   const [infoOpen, setInfoOpen] = useState(false)
+
+  // Flag-filter mode: each flag is rendered with its own solid hue, darkened
+  // by fishing intensity. All flags share one brightness scale, so a single
+  // pair of end labels applies to every flag's ramp.
+  if (selectedFlags.length > 0) {
+    return (
+      <div style={{ ...CONTAINER_STYLE, maxWidth: 200 }}>
+        <div style={{ ...TITLE_STYLE, marginBottom: 8 }}>Fishing Hours by Flag</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {selectedFlags.map((code, i) => {
+            const [r, g, b] = FLAG_COLORS[i % FLAG_COLORS.length]
+            return (
+              <div key={code}>
+                <div style={{ fontSize: 11, color: theme.textPrimary, marginBottom: 3 }}>
+                  {getCountryName(code)}
+                </div>
+                <div style={{
+                  height: 8, borderRadius: 4,
+                  background: `linear-gradient(to right, rgb(0,0,0), rgb(${r}, ${g}, ${b}))`,
+                  border: `1px solid ${theme.border}`,
+                }} />
+              </div>
+            )
+          })}
+        </div>
+        <div style={{
+          display: 'flex', justifyContent: 'space-between',
+          fontSize: 9, color: theme.textMuted, marginTop: 5,
+          fontVariantNumeric: 'tabular-nums',
+        }}>
+          <span>0</span>
+          <span>{fmt(maxHours)} h</span>
+        </div>
+        <div style={{
+          fontSize: 9,
+          color: theme.textMuted,
+          letterSpacing: '0.04em',
+          lineHeight: 1.5,
+          marginTop: 7,
+        }}>
+          {/* Brightness scales with fishing hours per grid cell — a shared scale
+          across all selected flags. */}
+        </div>
+      </div>
+    )
+  }
 
   const ticks = [
     { label: fmt(maxHours),                    pct: 100, highlight: 'rgb(255,200,0)'  },
@@ -49,33 +122,12 @@ export default function MapLegend({ maxHours }: MapLegendProps) {
   ]
 
   return (
-    <div style={{
-      position: 'absolute',
-      top: 20,
-      left: 20,
-      zIndex: 20,
-      background: theme.surfaceBg,
-      backdropFilter: 'blur(14px)',
-      WebkitBackdropFilter: 'blur(14px)',
-      border: `1px solid ${theme.border}`,
-      boxShadow: theme.shadowSoft,
-      borderRadius: 14,
-      padding: '12px 14px 12px 12px',
-      pointerEvents: 'none',
-      userSelect: 'none',
-      minWidth: 110,
-    }}>
+    <div style={{ ...CONTAINER_STYLE, pointerEvents: 'none' }}>
       <div style={{
         display: 'flex', alignItems: 'center', gap: 5,
         marginBottom: 3,
       }}>
-        <span style={{
-          fontSize: 11,
-          fontWeight: 700,
-          color: theme.textPrimary,
-          letterSpacing: '0.06em',
-          textTransform: 'uppercase',
-        }}>
+        <span style={TITLE_STYLE}>
           Fishing Hours
         </span>
         <button

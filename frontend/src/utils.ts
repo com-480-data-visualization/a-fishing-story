@@ -35,13 +35,16 @@ export function fishingColor(value: number, max: number): [number, number, numbe
   ]
 }
 
-const FLAG_COLORS: [number, number, number][] = [
+export const FLAG_COLORS: [number, number, number][] = [
   [220, 50,  50 ],  // red
   [50,  180, 220],  // cyan
   [50,  220, 100],  // green
   [220, 160, 50 ],  // orange
   [180, 50,  220],  // purple
 ]
+
+/** Maximum number of flags that can be selected at once (bounded by FLAG_COLORS). */
+export const MAX_FLAGS = FLAG_COLORS.length
 
 export function flagColor(flagIndex: number, value: number, max: number): [number, number, number, number] {
   const t = Math.min(Math.log1p(value) / Math.log1p(max), 1)
