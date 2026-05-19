@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import type { RefObject } from 'react'
 import DeckGL from '@deck.gl/react'
 import { SolidPolygonLayer } from '@deck.gl/layers'
@@ -10,8 +10,9 @@ import type { Map as MaplibreMap } from 'maplibre-gl'
 
 import type { FishingCell } from '../api/fishing'
 import { fishingColor, flagColor } from '../utils'
+import { DATA_BASE_URL } from '../db/index'
 
-const MAP_STYLE = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json'
+const MAP_STYLE = 'https://tiles.stadiamaps.com/styles/outdoors.json'
 
 interface MapViewProps {
   data: Map<string, FishingCell[]>
@@ -21,6 +22,8 @@ interface MapViewProps {
   onViewStateChange: (vs: MapViewState) => void
   locked?: boolean
   onMapInstance?: (map: MaplibreMap) => void
+  onResize?: () => void
+  showEEZ?: boolean
 }
 
 export default function MapView({
@@ -31,16 +34,49 @@ export default function MapView({
   onViewStateChange,
   locked,
   onMapInstance,
+  onResize,
+  showEEZ = false,
 }: MapViewProps) {
   const mapRef = useRef<MapRef>(null)
+  const eezReadyRef = useRef(false)
+  const showEEZRef = useRef(showEEZ)
   const res = resolution
+
+  useEffect(() => {
+    // Mirror into a ref so the map's onLoad handler can read the latest value.
+    showEEZRef.current = showEEZ
+    const map = mapRef.current?.getMap()
+    if (!map || !eezReadyRef.current) return
+    map.setLayoutProperty('eez-lines', 'visibility', showEEZ ? 'visible' : 'none')
+  }, [showEEZ])
+
+  // Keep MapLibre in sync when the container resizes (e.g. the chart panel
+  // pushing the map area), and notify the parent so viewport-scoped data refetches.
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const ro = new ResizeObserver(() => {
+      mapRef.current?.getMap()?.resize()
+      onResize?.()
+    })
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [containerRef, onResize])
 
   const layers = useMemo(() => {
     const entries = Array.from(data.entries())
-    const isMultiFlag = entries.length > 1 || (entries.length === 1 && entries[0][0] !== '')
+
+    // Single max across every layer, so flag colours share one brightness
+    // scale and are comparable in magnitude with each other.
+    let maxHours = 1
+    for (const [, cells] of entries)
+      for (const cell of cells)
+        if (cell.fishing_hours > maxHours) maxHours = cell.fishing_hours
 
     return entries.map(([flag, cells], index) => {
-      const maxHours = cells.reduce((max, d) => Math.max(max, d.fishing_hours), 1)
+      // An empty key is the unfiltered global layer; any real flag (even a
+      // single one) gets its own solid hue from the FLAG_COLORS palette.
+      const useFlagColor = flag !== ''
 
       return new SolidPolygonLayer<FishingCell>({
         id: `fishing-grid-${flag || 'global'}`,
@@ -51,7 +87,7 @@ export default function MapView({
           [d.lon + res, d.lat + res],
           [d.lon, d.lat + res],
         ],
-        getFillColor: isMultiFlag
+        getFillColor: useFlagColor
           ? d => flagColor(index, d.fishing_hours, maxHours)
           : d => fishingColor(d.fishing_hours, maxHours),
         extruded: false,
@@ -72,9 +108,27 @@ export default function MapView({
           ref={mapRef}
           mapStyle={MAP_STYLE}
           onLoad={() => {
-            if (onMapInstance && mapRef.current) {
-              onMapInstance(mapRef.current.getMap())
+            const map = mapRef.current?.getMap()
+            if (!map) return
+            map.addSource('eez-boundaries', {
+              type: 'geojson',
+              data: `${DATA_BASE_URL}/eez_boundaries.geojson`,
+            })
+            map.addLayer({
+              id: 'eez-lines',
+              type: 'line',
+              source: 'eez-boundaries',
+              layout: { visibility: 'none' },
+              paint: {
+                'line-color': 'rgba(12, 203, 194, 0.75)',
+                'line-width': 1.5,
+              },
+            })
+            eezReadyRef.current = true
+            if (showEEZRef.current) {
+              map.setLayoutProperty('eez-lines', 'visibility', 'visible')
             }
+            if (onMapInstance) onMapInstance(map)
           }}
         />
       </DeckGL>

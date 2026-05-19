@@ -14,7 +14,7 @@ export const ZONES: Zone[] = [
     name: 'South China Sea',
     lon: 114.0,
     lat: 14.0,
-    zoom: 5,
+    zoom: 4,
     color: '#FF6B6B',
     description: [
       'The South China Sea is one of the world\'s most contested maritime regions, with overlapping territorial claims between China, Taiwan, Vietnam, the Philippines, Malaysia, and Brunei.',
@@ -70,7 +70,7 @@ export const ZONES: Zone[] = [
     name: 'North Sea',
     lon: 3.0,
     lat: 56.5,
-    zoom: 5,
+    zoom: 4,
     color: '#C9B1FF',
     description: [
       'The North Sea is one of the most intensively managed fisheries in the world, bordered by the UK, Norway, Denmark, Germany, the Netherlands, Belgium, and France. It has been a cornerstone of European fishing culture and commerce for centuries.',

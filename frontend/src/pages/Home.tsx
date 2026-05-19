@@ -1,88 +1,119 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { FlyToInterpolator } from '@deck.gl/core'
 import type { MapViewState } from '@deck.gl/core'
 import type { Map as MaplibreMap } from 'maplibre-gl'
 
 import MapView from '../components/Map'
 import ZonePin from '../components/ZonePin'
-import ZoneInfoPanel from '../components/ZoneInfoPanel'
-import ChartSlot, { COMPACT_SCALE } from '../components/charts/ChartSlot'
-import BubbleChart from '../components/charts/BubbleChart'
-import LollipopChart from '../components/charts/LollipopChart'
-import HeatmapChart from '../components/charts/HeatmapChart'
+import ChartPanel from '../components/ChartPanel'
 import Timeline from '../components/Timeline'
+import ZoneTimeline from '../components/ZoneTimeline'
 import MapLegend from '../components/MapLegend'
+import MapControls from '../components/MapControls'
+import FlagPicker from '../components/FlagPicker'
 
 import { ZONES } from '../data/zones'
 import type { Zone } from '../data/zones'
 import { useMapState } from '../hooks/useMapState'
 import { useViewportCharts } from '../hooks/useViewportCharts'
+import { useZoneTimelapse } from '../hooks/useZoneTimelapse'
+import { useZoneCharts } from '../hooks/useZoneCharts'
+import { zoomToResolution } from '../utils'
+import { TIMELAPSE_YEAR } from '../constants'
+import { theme } from '../theme'
 
 const INITIAL_DATE = '2023-01-01'
 const INITIAL_VIEW = { longitude: 10, latitude: 32.44, zoom: 1.4 }
 
-const ZONE_SELECT_GRACE_MS = 2000
+/** Camera fly-in duration when entering a zone. */
+const FLY_DURATION_MS = 1400
 
 export default function Home() {
   const {
     data, viewState, resolution, containerRef,
-    currentDate, isPlaying,
-    onViewStateChange, seek, play, pause,
+    currentDate,
+    selectedFlags, toggleFlag, clearFlags,
+    onViewStateChange, seek,
   } = useMapState(INITIAL_DATE, INITIAL_VIEW)
 
   const [mapInstance, setMapInstance] = useState<MaplibreMap | null>(null)
-  const [selectedZone, setSelectedZone] = useState<Zone | null>(null)
-  const [showChart, setShowChart] = useState(false)
-  const [lockedIndex, setLockedIndex] = useState<number | null>(null)
+  const [panelOpen, setPanelOpen] = useState(false)
+  const [showEEZ, setShowEEZ] = useState(false)
+  const [flagPickerOpen, setFlagPickerOpen] = useState(false)
 
-  const { bubbleData, illegalData, timeSeriesData } = useViewportCharts(containerRef, viewState, currentDate)
+  // When set, the app is in zone-timelapse mode: a fixed-view, in-memory
+  // year-long animation of one zone instead of the free-exploration map.
+  const [timelapseZone, setTimelapseZone] = useState<Zone | null>(null)
+  const inZoneMode = timelapseZone !== null
+
+  // Camera state for zone mode — set with a fly-to transition on entry.
+  const [zoneView, setZoneView] = useState<MapViewState | null>(null)
+  const [zoneFlying, setZoneFlying] = useState(false)
+
+  const tl = useZoneTimelapse(timelapseZone?.id ?? null, TIMELAPSE_YEAR, selectedFlags)
+  const zoneCharts = useZoneCharts(tl.data)
+
+  // Bumped whenever the map container resizes so viewport-scoped charts refetch.
+  const [resizeNonce, setResizeNonce] = useState(0)
+  const handleMapResize = useCallback(() => setResizeNonce(n => n + 1), [])
+
+  const exploreCharts = useViewportCharts(containerRef, viewState, currentDate, resizeNonce)
+  const charts = inZoneMode ? zoneCharts : exploreCharts
+
+  // The grid currently rendered — a live viewport query, or a timelapse frame.
+  const mapData = inZoneMode ? tl.frameData : data
+
+  // In zone mode the camera is pinned to the zone (after the fly-in).
+  const mapViewState: MapViewState = inZoneMode
+    ? (zoneView ?? { longitude: timelapseZone.lon, latitude: timelapseZone.lat, zoom: timelapseZone.zoom })
+    : viewState
+  const mapResolution = inZoneMode ? zoomToResolution(timelapseZone.zoom) : resolution
 
   const maxHours = useMemo(() => {
     let max = 0
-    for (const cells of data.values())
+    for (const cells of mapData.values())
       for (const cell of cells)
         if (cell.fishing_hours > max) max = cell.fishing_hours
     return max
-  }, [data])
+  }, [mapData])
 
-  const lastZoneSelectTime = useRef<number>(0)
-
+  // Clicking a zone pin enters its timelapse, flying the camera in.
   const handleZoneClick = (zone: Zone) => {
-    lastZoneSelectTime.current = Date.now()
-    onViewStateChange({
-      ...viewState,
+    setTimelapseZone(zone)
+    setPanelOpen(true)
+    setZoneView({
       longitude: zone.lon,
       latitude: zone.lat,
       zoom: zone.zoom,
-      transitionDuration: 1400,
+      transitionDuration: FLY_DURATION_MS,
+      transitionInterpolator: new FlyToInterpolator(),
     } as MapViewState)
-    setSelectedZone(zone)
-    setShowChart(true)
+    setZoneFlying(true)
+    window.setTimeout(() => setZoneFlying(false), FLY_DURATION_MS + 100)
   }
 
-  useEffect(() => {
-    if (!selectedZone) return
-    if (Date.now() - lastZoneSelectTime.current < ZONE_SELECT_GRACE_MS) return
-    const dLon = Math.abs(viewState.longitude - selectedZone.lon)
-    const wrappedDLon = Math.min(dLon, 360 - dLon)
-    const dLat = Math.abs(viewState.latitude - selectedZone.lat)
-    const dist = Math.sqrt(wrappedDLon * wrappedDLon + dLat * dLat)
-    if (viewState.zoom < 3.5 || dist > 20) setSelectedZone(null)
-  }, [viewState.longitude, viewState.latitude, viewState.zoom, selectedZone])
+  const handleExitZone = () => {
+    setTimelapseZone(null)
+    setZoneView(null)
+    setZoneFlying(false)
+  }
 
-  // Spacebar toggles play/pause
+  // Spacebar toggles zone-timelapse playback (explore mode has no playback).
   useEffect(() => {
+    if (!inZoneMode) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.code === 'Space') {
-        e.preventDefault()
-        isPlaying ? pause() : play()
-      }
+      if (e.code !== 'Space') return
+      e.preventDefault()
+      if (tl.isPlaying) tl.pause()
+      else tl.play()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [isPlaying, play, pause])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inZoneMode, tl.isPlaying, tl.play, tl.pause])
 
   return (
-    <div style={{ width: '100%', height: '100svh', position: 'relative' }}>
+    <div style={{ width: '100%', height: '100svh', display: 'flex', overflow: 'hidden' }}>
       <style>{`
         @keyframes zoneBeaconPulse {
           0%   { transform: translate(-50%, -50%) scale(0.4); opacity: 0.9; }
@@ -94,77 +125,85 @@ export default function Home() {
         }
       `}</style>
 
-      <MapView
-        data={data}
-        viewState={viewState}
-        resolution={resolution}
-        containerRef={containerRef}
-        onViewStateChange={onViewStateChange}
-        locked={isPlaying}
-        onMapInstance={setMapInstance}
-      />
+      {/* Map area — flexes to fill the space left by the chart panel */}
+      <div style={{ position: 'relative', flex: 1, minWidth: 0, overflow: 'hidden' }}>
+        <MapView
+          data={mapData}
+          viewState={mapViewState}
+          resolution={mapResolution}
+          containerRef={containerRef}
+          // While flying in, feed transition frames back; once pinned, ignore.
+          onViewStateChange={inZoneMode ? vs => setZoneView(vs) : onViewStateChange}
+          locked={inZoneMode && !zoneFlying}
+          onMapInstance={setMapInstance}
+          onResize={handleMapResize}
+          showEEZ={showEEZ}
+        />
 
-      {mapInstance && viewState.zoom < 5.5 && ZONES.map(zone => {
-        const px = mapInstance.project([zone.lon, zone.lat])
-        return (
-          <div key={zone.id} style={{ position: 'absolute', left: px.x, top: px.y, zIndex: 30, pointerEvents: 'auto' }}>
-            <ZonePin zone={zone} isSelected={selectedZone?.id === zone.id} onZoneClick={handleZoneClick} />
+        {/* Zone pins — explore mode only */}
+        {!inZoneMode && mapInstance && viewState.zoom < 5.5 && ZONES.map(zone => {
+          const px = mapInstance.project([zone.lon, zone.lat])
+          return (
+            <div key={zone.id} style={{ position: 'absolute', left: px.x, top: px.y, zIndex: 10, pointerEvents: 'auto' }}>
+              <ZonePin zone={zone} isSelected={false} onZoneClick={handleZoneClick} />
+            </div>
+          )
+        })}
+
+        {/* Loading overlay while a zone's year is being fetched */}
+        {inZoneMode && tl.loading && (
+          <div style={{
+            position: 'absolute', inset: 0, zIndex: 30,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: 'rgba(15,23,42,0.18)',
+            backdropFilter: 'blur(2px)',
+            color: theme.textPrimary, fontSize: 14, fontWeight: 600,
+            pointerEvents: 'none',
+          }}>
+            Loading {timelapseZone.name} timelapse…
           </div>
-        )
-      })}
+        )}
 
-      {selectedZone && (
-        <ZoneInfoPanel zone={selectedZone} onClose={() => setSelectedZone(null)} />
-      )}
+        <MapLegend maxHours={maxHours} selectedFlags={selectedFlags} />
 
-      {false && (
-        <div style={{
-          position: 'absolute', top: '50%', right: 20,
-          transform: 'translateY(-50%)',
-          display: 'flex', flexDirection: 'column', gap: 12,
-          overflow: 'visible', pointerEvents: 'none', zIndex: 15,
-        }}>
-          <ChartSlot naturalHeight={340} locked={lockedIndex === 0} onToggleLock={() => setLockedIndex(p => p === 0 ? null : 0)}>
-            <BubbleChart data={bubbleData} />
-          </ChartSlot>
-          <ChartSlot naturalHeight={252} locked={lockedIndex === 1} onToggleLock={() => setLockedIndex(p => p === 1 ? null : 1)}>
-            <LollipopChart data={illegalData} />
-          </ChartSlot>
-          <ChartSlot naturalHeight={247} expandOffset={-Math.round(247 * (1 - COMPACT_SCALE))} locked={lockedIndex === 2} onToggleLock={() => setLockedIndex(p => p === 2 ? null : 2)}>
-            <HeatmapChart data={timeSeriesData} />
-          </ChartSlot>
-        </div>
-      )}
+        <MapControls
+          panelOpen={panelOpen}
+          onTogglePanel={() => setPanelOpen(prev => !prev)}
+          flagActive={selectedFlags.length > 0}
+          flagPickerOpen={flagPickerOpen}
+          onToggleFlagPicker={() => setFlagPickerOpen(prev => !prev)}
+          showEEZ={showEEZ}
+          onToggleEEZ={() => setShowEEZ(prev => !prev)}
+        />
 
-      <MapLegend maxHours={maxHours} />
+        <FlagPicker
+          key={flagPickerOpen ? 'open' : 'closed'}
+          selectedFlags={selectedFlags}
+          onToggle={toggleFlag}
+          onClear={clearFlags}
+          open={flagPickerOpen}
+        />
 
-      {/* Toggle charts button */}
-      <button
-        onClick={() => setShowChart(prev => !prev)}
-        title={showChart ? 'Hide charts' : 'Show charts'}
-        style={{
-          position: 'absolute', top: 20, right: 20,
-          width: 44, height: 44,
-          background: 'rgba(10,14,18,0.6)', color: 'white',
-          border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8,
-          cursor: 'pointer',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 20,
-        }}
-      >
-        <svg width="18" height="18" viewBox="0 0 18 18" fill="currentColor">
-          <rect x="1"  y="10" width="4" height="7" rx="1" opacity={showChart ? 1 : 0.5} />
-          <rect x="7"  y="5"  width="4" height="12" rx="1" opacity={showChart ? 1 : 0.5} />
-          <rect x="13" y="1"  width="4" height="16" rx="1" opacity={showChart ? 1 : 0.5} />
-        </svg>
-      </button>
+        {inZoneMode ? (
+          <ZoneTimeline
+            dates={tl.data?.dates ?? []}
+            index={tl.index}
+            isPlaying={tl.isPlaying}
+            onSeek={tl.seek}
+            onPlayPause={() => tl.isPlaying ? tl.pause() : tl.play()}
+            onExit={handleExitZone}
+          />
+        ) : (
+          <Timeline currentDate={currentDate} onSeek={seek} />
+        )}
+      </div>
 
-      {/* Timeline */}
-      <Timeline
-        currentDate={currentDate}
-        isPlaying={isPlaying}
-        onSeek={seek}
-        onPlayPause={() => isPlaying ? pause() : play()}
+      <ChartPanel
+        open={panelOpen}
+        bubbleData={charts.bubbleData}
+        illegalData={charts.illegalData}
+        timeSeriesData={charts.timeSeriesData}
+        zone={inZoneMode ? timelapseZone : null}
       />
     </div>
   )

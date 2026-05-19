@@ -1,9 +1,9 @@
 import type { AsyncDuckDBConnection } from '@duckdb/duckdb-wasm'
-import type { FishingCell, BBox, ChartItem, TimeSeriesItem } from '../api/fishing'
+import type { FishingCell, BBox, ChartItem, IllegalChartItem, TimeSeriesItem } from '../api/fishing'
 import { DATA_BASE_URL } from './index'
 
-function monthUrl(yearMonth: string): string {
-  return `${DATA_BASE_URL}/daily_sorted/fleet-daily-${yearMonth}.parquet`
+function getDayUrl(date: string): string {
+  return `${DATA_BASE_URL}/daily_split/fleet-daily-${date}.parquet`
 }
 
 export async function queryDaily(
@@ -14,10 +14,9 @@ export async function queryDaily(
   geartype?: string,
   bbox?: BBox,
 ): Promise<FishingCell[]> {
-  const yearMonth = date.slice(0, 7)
-  const url = monthUrl(yearMonth)
+  const url = getDayUrl(date)
   const res = resolution
-  const conditions: string[] = [`date = '${date}'`]
+  const conditions: string[] = []
   if (bbox) {
     conditions.push(`cell_ll_lat BETWEEN ${bbox.lat_min} AND ${bbox.lat_max}`)
     conditions.push(`cell_ll_lon BETWEEN ${bbox.lon_min} AND ${bbox.lon_max}`)
@@ -25,13 +24,15 @@ export async function queryDaily(
   if (flag) conditions.push(`flag = '${flag}'`)
   if (geartype) conditions.push(`geartype = '${geartype}'`)
 
+  const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''
+
   const table = await conn.query(`
     SELECT
       (ROUND(cell_ll_lat / ${res}) * ${res})::FLOAT AS lat,
       (ROUND(cell_ll_lon / ${res}) * ${res})::FLOAT AS lon,
       SUM(fishing_hours)::FLOAT AS fishing_hours
     FROM read_parquet('${url}')
-    WHERE ${conditions.join(' AND ')}
+    ${where}
     GROUP BY lat, lon
   `)
 
@@ -50,84 +51,23 @@ export async function queryDaily(
   return cells
 }
 
-export async function queryRange(
-  conn: AsyncDuckDBConnection,
-  dateStart: string,
-  dateEnd: string,
-  resolution: number,
-  flag?: string,
-  geartype?: string,
-  bbox?: BBox,
-): Promise<Map<string, FishingCell[]>> {
-  const res = resolution
-
-  const yearMonths: string[] = []
-  const cur = new Date(dateStart)
-  cur.setDate(1)
-  const end = new Date(dateEnd)
-  while (cur <= end) {
-    yearMonths.push(`${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}`)
-    cur.setMonth(cur.getMonth() + 1)
-  }
-  if (yearMonths.length === 0) return new Map()
-
-  const urlList = '[' + yearMonths.map(ym => `'${monthUrl(ym)}'`).join(', ') + ']'
-  const conditions: string[] = [
-    `date BETWEEN '${dateStart}' AND '${dateEnd}'`,
-    `cell_ll_lat BETWEEN ${bbox?.lat_min ?? -90} AND ${bbox?.lat_max ?? 90}`,
-    `cell_ll_lon BETWEEN ${bbox?.lon_min ?? -180} AND ${bbox?.lon_max ?? 180}`,
-  ]
-  if (flag) conditions.push(`flag = '${flag}'`)
-  if (geartype) conditions.push(`geartype = '${geartype}'`)
-
-  const table = await conn.query(`
-    SELECT
-      date::VARCHAR AS date,
-      (ROUND(cell_ll_lat / ${res}) * ${res})::FLOAT AS lat,
-      (ROUND(cell_ll_lon / ${res}) * ${res})::FLOAT AS lon,
-      SUM(fishing_hours)::FLOAT AS fishing_hours
-    FROM read_parquet(${urlList})
-    WHERE ${conditions.join(' AND ')}
-    GROUP BY date, lat, lon
-    ORDER BY date
-  `)
-
-  const dateCol = table.getChild('date')!
-  const latCol = table.getChild('lat')!
-  const lonCol = table.getChild('lon')!
-  const hoursCol = table.getChild('fishing_hours')!
-
-  const result = new Map<string, FishingCell[]>()
-  for (let i = 0; i < table.numRows; i++) {
-    const dateStr = dateCol.get(i) as string
-    if (!result.has(dateStr)) result.set(dateStr, [])
-    result.get(dateStr)!.push({
-      lat: latCol.get(i) as number,
-      lon: lonCol.get(i) as number,
-      fishing_hours: hoursCol.get(i) as number,
-    })
-  }
-  return result
-}
-
 export async function queryChart(
   conn: AsyncDuckDBConnection,
   date: string,
   bbox: BBox,
 ): Promise<ChartItem[]> {
-  const url = monthUrl(date.slice(0, 7))
+  const url = getDayUrl(date)
 
   const table = await conn.query(`
     SELECT
       flag AS label,
-      SUM(mmsi_present)::DOUBLE AS value
+      SUM(fishing_hours)::DOUBLE AS value
     FROM read_parquet('${url}')
-    WHERE date = '${date}'
-      AND cell_ll_lon BETWEEN ${bbox.lon_min} AND ${bbox.lon_max}
+    WHERE cell_ll_lon BETWEEN ${bbox.lon_min} AND ${bbox.lon_max}
       AND cell_ll_lat BETWEEN ${bbox.lat_min} AND ${bbox.lat_max}
       AND flag IS NOT NULL
     GROUP BY flag
-    HAVING SUM(mmsi_present) > 0
+    HAVING SUM(fishing_hours) > 0
     ORDER BY value DESC
   `)
 
@@ -139,6 +79,45 @@ export async function queryChart(
     label: String(r.label),
     value: Math.round(100.0 * Number(r.value) / total * 100) / 100,
   }))
+}
+
+export async function queryIllegalFishing(
+  conn: AsyncDuckDBConnection,
+  date: string,
+  bbox: BBox,
+): Promise<IllegalChartItem[]> {
+  const dayUrl = getDayUrl(date)
+  const eezUrl = `${DATA_BASE_URL}/eez_grid.parquet`
+
+  const table = await conn.query(`
+    SELECT
+      d.flag,
+      SUM(d.fishing_hours)::DOUBLE AS total_count,
+      SUM(CASE WHEN e.eez_iso != d.flag AND e.eez_iso != 'INT'
+               THEN d.fishing_hours ELSE 0 END)::DOUBLE AS illegal_count
+    FROM read_parquet('${dayUrl}') d
+    JOIN read_parquet('${eezUrl}') e
+      ON ROUND(d.cell_ll_lat::DOUBLE * 10)::INTEGER = ROUND(e.cell_ll_lat * 10)::INTEGER
+     AND ROUND(d.cell_ll_lon::DOUBLE * 10)::INTEGER = ROUND(e.cell_ll_lon * 10)::INTEGER
+    WHERE d.cell_ll_lat BETWEEN ${bbox.lat_min} AND ${bbox.lat_max}
+      AND d.cell_ll_lon BETWEEN ${bbox.lon_min} AND ${bbox.lon_max}
+      AND d.flag IS NOT NULL
+    GROUP BY d.flag
+    HAVING illegal_count >= 10
+    ORDER BY illegal_count DESC
+    LIMIT 5
+  `)
+
+  return table.toArray().map(r => {
+    const total   = Number(r.total_count)
+    const illegal = Number(r.illegal_count)
+    return {
+      label:         String(r.flag),
+      total_count:   total,
+      illegal_count: illegal,
+      value:         total > 0 ? Math.round(illegal / total * 1000) / 10 : 0,
+    }
+  })
 }
 
 export async function queryTimeSeries(

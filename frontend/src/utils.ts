@@ -26,16 +26,16 @@ export function bboxExceedsFetched(current: BBox, fetched: BBox): boolean {
 }
 
 export function fishingColor(value: number, max: number): [number, number, number, number] {
-  const t = Math.min(value / max, 1)
+  const t = Math.min(Math.log1p(value) / Math.log1p(max), 1)
   return [
     Math.round(t * 255),
     Math.round(t * 200),
     Math.round((1 - t) * 180),
-    200,
+    Math.round(50 + t * 180),
   ]
 }
 
-const FLAG_COLORS: [number, number, number][] = [
+export const FLAG_COLORS: [number, number, number][] = [
   [220, 50,  50 ],  // red
   [50,  180, 220],  // cyan
   [50,  220, 100],  // green
@@ -43,8 +43,11 @@ const FLAG_COLORS: [number, number, number][] = [
   [180, 50,  220],  // purple
 ]
 
+/** Maximum number of flags that can be selected at once (bounded by FLAG_COLORS). */
+export const MAX_FLAGS = FLAG_COLORS.length
+
 export function flagColor(flagIndex: number, value: number, max: number): [number, number, number, number] {
-  const t = Math.min(value / max, 1)
+  const t = Math.min(Math.log1p(value) / Math.log1p(max), 1)
   const [r, g, b] = FLAG_COLORS[flagIndex % FLAG_COLORS.length]
   return [
     Math.round(r * t),
@@ -52,12 +55,6 @@ export function flagColor(flagIndex: number, value: number, max: number): [numbe
     Math.round(b * t),
     Math.round(50 + t * 180),
   ]
-}
-
-export function nextDay(date: string): string {
-  const d = new Date(date)
-  d.setDate(d.getDate() + 1)
-  return d.toISOString().slice(0, 10)
 }
 
 export function computeBBox(

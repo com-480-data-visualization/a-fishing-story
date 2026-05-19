@@ -57,6 +57,7 @@ class CORSHandler(SimpleHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Range, Content-Type")
         self.send_header("Access-Control-Expose-Headers", "Content-Range, Accept-Ranges, Content-Length")
+        self.send_header("Cache-Control", "public, max-age=86400")
         super().end_headers()
         size_str = _fmt_size(self._log_size) if self._log_size is not None else "-"
         print(f"{self._log_code}  {size_str:>10}  {self.requestline}", file=sys.stderr)
