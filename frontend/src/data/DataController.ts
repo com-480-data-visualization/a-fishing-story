@@ -1,10 +1,6 @@
-import { DATA_BASE_URL } from '../db/index'
 import { fetchFishingDaily } from '../api/fishing'
 import type { FishingCell, BBox } from '../api/fishing'
-import { nextDay, bboxExceedsFetched } from '../utils'
-import { DATE_MAX } from '../constants'
-
-const PREFETCH_DAYS = 5
+import { bboxExceedsFetched } from '../utils'
 
 export interface QueryContext {
   resolution: number
@@ -19,10 +15,6 @@ interface CacheEntry {
 
 type Listener = () => void
 
-function dayUrl(date: string): string {
-  return `${DATA_BASE_URL}/daily_split/fleet-daily-${date}.parquet`
-}
-
 function padBBox(bbox: BBox): BBox {
   const lonPad = (bbox.lon_max - bbox.lon_min) * 0.5
   const latPad = (bbox.lat_max - bbox.lat_min) * 0.5
@@ -36,7 +28,6 @@ function padBBox(bbox: BBox): BBox {
 
 export class DataController {
   private cache = new Map<string, CacheEntry>()
-  private prefetching = new Set<string>()
   private listeners = new Set<Listener>()
   readonly ctx: QueryContext
 
@@ -73,8 +64,6 @@ export class DataController {
       newEntry.data = new Map(entries)
       this.notify()
     })
-
-    this.schedulePrefetch(date)
   }
 
   get(date: string): { data: Map<string, FishingCell[]>; loading: boolean } {
@@ -90,19 +79,5 @@ export class DataController {
 
   private notify(): void {
     this.listeners.forEach(cb => cb())
-  }
-
-  // Fires plain fetch() for the next N days to prime the browser HTTP cache.
-  // DuckDB will then read from cache when those dates are actually queried.
-  private schedulePrefetch(fromDate: string): void {
-    let date = fromDate
-    for (let i = 0; i < PREFETCH_DAYS; i++) {
-      date = nextDay(date)
-      if (date > DATE_MAX) break
-      if (!this.prefetching.has(date) && !this.cache.has(date)) {
-        this.prefetching.add(date)
-        fetch(dayUrl(date)).finally(() => this.prefetching.delete(date))
-      }
-    }
   }
 }

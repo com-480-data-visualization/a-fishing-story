@@ -1,49 +1,40 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
 import type { MapViewState } from '@deck.gl/core'
-import { zoomToResolution, nextDay, MAX_FLAGS } from '../utils'
+import { zoomToResolution, MAX_FLAGS } from '../utils'
 import { useDataController } from './useDataController'
 import type { FishingCell } from '../api/fishing'
 import { DATE_MIN, DATE_MAX } from '../constants'
 
 export { DATE_MIN, DATE_MAX }
 
-const PLAY_INTERVAL_MS = 500
-
 interface State {
   currentDate: string
-  isPlaying: boolean
   viewState: MapViewState
 }
 
 type Action =
   | { type: 'SEEK'; date: string }
   | { type: 'SET_VIEW_STATE'; viewState: MapViewState }
-  | { type: 'SET_PLAYING'; playing: boolean }
-  | { type: 'TICK' }
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
     case 'SEEK':
-      return { ...state, currentDate: action.date, isPlaying: false }
+      return { ...state, currentDate: action.date }
     case 'SET_VIEW_STATE':
       return { ...state, viewState: action.viewState }
-    case 'SET_PLAYING':
-      return { ...state, isPlaying: action.playing }
-    case 'TICK': {
-      const next = nextDay(state.currentDate)
-      if (next > DATE_MAX) return { ...state, isPlaying: false }
-      return { ...state, currentDate: next }
-    }
     default:
       return state
   }
 }
 
+/**
+ * Explore-mode map state. The timeline is seek-only — there is no auto-advance
+ * playback (zone timelapses cover animated playback instead).
+ */
 export function useMapState(initialDate: string, initialViewState: MapViewState) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [state, dispatch] = useReducer(reducer, {
     currentDate: initialDate,
-    isPlaying: false,
     viewState: initialViewState,
   })
 
@@ -57,12 +48,6 @@ export function useMapState(initialDate: string, initialViewState: MapViewState)
     if (!loading) setDisplayData(data)
   }, [loading, data])
 
-  useEffect(() => {
-    if (!state.isPlaying) return
-    const id = setInterval(() => dispatch({ type: 'TICK' }), PLAY_INTERVAL_MS)
-    return () => clearInterval(id)
-  }, [state.isPlaying])
-
   // Toggle a flag in/out of the selection, capped at MAX_FLAGS.
   const toggleFlag = useCallback((flag: string) => {
     setSelectedFlags(prev => {
@@ -74,9 +59,7 @@ export function useMapState(initialDate: string, initialViewState: MapViewState)
   const clearFlags = useCallback(() => setSelectedFlags([]), [])
 
   const onViewStateChange = useCallback((vs: MapViewState) => dispatch({ type: 'SET_VIEW_STATE', viewState: vs }), [])
-  const seek  = useCallback((date: string) => dispatch({ type: 'SEEK', date }), [])
-  const play  = useCallback(() => dispatch({ type: 'SET_PLAYING', playing: true }), [])
-  const pause = useCallback(() => dispatch({ type: 'SET_PLAYING', playing: false }), [])
+  const seek = useCallback((date: string) => dispatch({ type: 'SEEK', date }), [])
 
   return {
     data: displayData,
@@ -85,13 +68,10 @@ export function useMapState(initialDate: string, initialViewState: MapViewState)
     resolution: currentResolution,
     containerRef,
     currentDate: state.currentDate,
-    isPlaying: state.isPlaying,
     selectedFlags,
     toggleFlag,
     clearFlags,
     onViewStateChange,
     seek,
-    play,
-    pause,
   }
 }

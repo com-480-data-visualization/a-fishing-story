@@ -1,12 +1,13 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { FlyToInterpolator } from '@deck.gl/core'
 import type { MapViewState } from '@deck.gl/core'
 import type { Map as MaplibreMap } from 'maplibre-gl'
 
 import MapView from '../components/Map'
 import ZonePin from '../components/ZonePin'
-import ZoneInfoPanel from '../components/ZoneInfoPanel'
 import ChartPanel from '../components/ChartPanel'
 import Timeline from '../components/Timeline'
+import ZoneTimeline from '../components/ZoneTimeline'
 import MapLegend from '../components/MapLegend'
 import MapControls from '../components/MapControls'
 import FlagPicker from '../components/FlagPicker'
@@ -15,77 +16,101 @@ import { ZONES } from '../data/zones'
 import type { Zone } from '../data/zones'
 import { useMapState } from '../hooks/useMapState'
 import { useViewportCharts } from '../hooks/useViewportCharts'
+import { useZoneTimelapse } from '../hooks/useZoneTimelapse'
+import { useZoneCharts } from '../hooks/useZoneCharts'
+import { zoomToResolution } from '../utils'
+import { TIMELAPSE_YEAR } from '../constants'
+import { theme } from '../theme'
 
 const INITIAL_DATE = '2023-01-01'
 const INITIAL_VIEW = { longitude: 10, latitude: 32.44, zoom: 1.4 }
 
-const ZONE_SELECT_GRACE_MS = 2000
+/** Camera fly-in duration when entering a zone. */
+const FLY_DURATION_MS = 1400
 
 export default function Home() {
   const {
     data, viewState, resolution, containerRef,
-    currentDate, isPlaying,
+    currentDate,
     selectedFlags, toggleFlag, clearFlags,
-    onViewStateChange, seek, play, pause,
+    onViewStateChange, seek,
   } = useMapState(INITIAL_DATE, INITIAL_VIEW)
 
   const [mapInstance, setMapInstance] = useState<MaplibreMap | null>(null)
-  const [selectedZone, setSelectedZone] = useState<Zone | null>(null)
   const [panelOpen, setPanelOpen] = useState(false)
   const [showEEZ, setShowEEZ] = useState(false)
   const [flagPickerOpen, setFlagPickerOpen] = useState(false)
+
+  // When set, the app is in zone-timelapse mode: a fixed-view, in-memory
+  // year-long animation of one zone instead of the free-exploration map.
+  const [timelapseZone, setTimelapseZone] = useState<Zone | null>(null)
+  const inZoneMode = timelapseZone !== null
+
+  // Camera state for zone mode — set with a fly-to transition on entry.
+  const [zoneView, setZoneView] = useState<MapViewState | null>(null)
+  const [zoneFlying, setZoneFlying] = useState(false)
+
+  const tl = useZoneTimelapse(timelapseZone?.id ?? null, TIMELAPSE_YEAR, selectedFlags)
+  const zoneCharts = useZoneCharts(tl.data)
 
   // Bumped whenever the map container resizes so viewport-scoped charts refetch.
   const [resizeNonce, setResizeNonce] = useState(0)
   const handleMapResize = useCallback(() => setResizeNonce(n => n + 1), [])
 
-  const { bubbleData, illegalData, timeSeriesData } =
-    useViewportCharts(containerRef, viewState, currentDate, resizeNonce)
+  const exploreCharts = useViewportCharts(containerRef, viewState, currentDate, resizeNonce)
+  const charts = inZoneMode ? zoneCharts : exploreCharts
+
+  // The grid currently rendered — a live viewport query, or a timelapse frame.
+  const mapData = inZoneMode ? tl.frameData : data
+
+  // In zone mode the camera is pinned to the zone (after the fly-in).
+  const mapViewState: MapViewState = inZoneMode
+    ? (zoneView ?? { longitude: timelapseZone.lon, latitude: timelapseZone.lat, zoom: timelapseZone.zoom })
+    : viewState
+  const mapResolution = inZoneMode ? zoomToResolution(timelapseZone.zoom) : resolution
 
   const maxHours = useMemo(() => {
     let max = 0
-    for (const cells of data.values())
+    for (const cells of mapData.values())
       for (const cell of cells)
         if (cell.fishing_hours > max) max = cell.fishing_hours
     return max
-  }, [data])
+  }, [mapData])
 
-  const lastZoneSelectTime = useRef<number>(0)
-
+  // Clicking a zone pin enters its timelapse, flying the camera in.
   const handleZoneClick = (zone: Zone) => {
-    lastZoneSelectTime.current = Date.now()
-    onViewStateChange({
-      ...viewState,
+    setTimelapseZone(zone)
+    setPanelOpen(true)
+    setZoneView({
       longitude: zone.lon,
       latitude: zone.lat,
       zoom: zone.zoom,
-      transitionDuration: 1400,
+      transitionDuration: FLY_DURATION_MS,
+      transitionInterpolator: new FlyToInterpolator(),
     } as MapViewState)
-    setSelectedZone(zone)
-    setPanelOpen(true)
+    setZoneFlying(true)
+    window.setTimeout(() => setZoneFlying(false), FLY_DURATION_MS + 100)
   }
 
-  useEffect(() => {
-    if (!selectedZone) return
-    if (Date.now() - lastZoneSelectTime.current < ZONE_SELECT_GRACE_MS) return
-    const dLon = Math.abs(viewState.longitude - selectedZone.lon)
-    const wrappedDLon = Math.min(dLon, 360 - dLon)
-    const dLat = Math.abs(viewState.latitude - selectedZone.lat)
-    const dist = Math.sqrt(wrappedDLon * wrappedDLon + dLat * dLat)
-    if (viewState.zoom < 3.5 || dist > 20) setSelectedZone(null)
-  }, [viewState.longitude, viewState.latitude, viewState.zoom, selectedZone])
+  const handleExitZone = () => {
+    setTimelapseZone(null)
+    setZoneView(null)
+    setZoneFlying(false)
+  }
 
-  // Spacebar toggles play/pause
+  // Spacebar toggles zone-timelapse playback (explore mode has no playback).
   useEffect(() => {
+    if (!inZoneMode) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.code === 'Space') {
-        e.preventDefault()
-        isPlaying ? pause() : play()
-      }
+      if (e.code !== 'Space') return
+      e.preventDefault()
+      if (tl.isPlaying) tl.pause()
+      else tl.play()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [isPlaying, play, pause])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inZoneMode, tl.isPlaying, tl.play, tl.pause])
 
   return (
     <div style={{ width: '100%', height: '100svh', display: 'flex', overflow: 'hidden' }}>
@@ -103,28 +128,40 @@ export default function Home() {
       {/* Map area — flexes to fill the space left by the chart panel */}
       <div style={{ position: 'relative', flex: 1, minWidth: 0, overflow: 'hidden' }}>
         <MapView
-          data={data}
-          viewState={viewState}
-          resolution={resolution}
+          data={mapData}
+          viewState={mapViewState}
+          resolution={mapResolution}
           containerRef={containerRef}
-          onViewStateChange={onViewStateChange}
-          locked={isPlaying}
+          // While flying in, feed transition frames back; once pinned, ignore.
+          onViewStateChange={inZoneMode ? vs => setZoneView(vs) : onViewStateChange}
+          locked={inZoneMode && !zoneFlying}
           onMapInstance={setMapInstance}
           onResize={handleMapResize}
           showEEZ={showEEZ}
         />
 
-        {mapInstance && viewState.zoom < 5.5 && ZONES.map(zone => {
+        {/* Zone pins — explore mode only */}
+        {!inZoneMode && mapInstance && viewState.zoom < 5.5 && ZONES.map(zone => {
           const px = mapInstance.project([zone.lon, zone.lat])
           return (
             <div key={zone.id} style={{ position: 'absolute', left: px.x, top: px.y, zIndex: 10, pointerEvents: 'auto' }}>
-              <ZonePin zone={zone} isSelected={selectedZone?.id === zone.id} onZoneClick={handleZoneClick} />
+              <ZonePin zone={zone} isSelected={false} onZoneClick={handleZoneClick} />
             </div>
           )
         })}
 
-        {selectedZone && (
-          <ZoneInfoPanel zone={selectedZone} onClose={() => setSelectedZone(null)} />
+        {/* Loading overlay while a zone's year is being fetched */}
+        {inZoneMode && tl.loading && (
+          <div style={{
+            position: 'absolute', inset: 0, zIndex: 30,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: 'rgba(15,23,42,0.18)',
+            backdropFilter: 'blur(2px)',
+            color: theme.textPrimary, fontSize: 14, fontWeight: 600,
+            pointerEvents: 'none',
+          }}>
+            Loading {timelapseZone.name} timelapse…
+          </div>
         )}
 
         <MapLegend maxHours={maxHours} selectedFlags={selectedFlags} />
@@ -147,19 +184,26 @@ export default function Home() {
           open={flagPickerOpen}
         />
 
-        <Timeline
-          currentDate={currentDate}
-          isPlaying={isPlaying}
-          onSeek={seek}
-          onPlayPause={() => isPlaying ? pause() : play()}
-        />
+        {inZoneMode ? (
+          <ZoneTimeline
+            dates={tl.data?.dates ?? []}
+            index={tl.index}
+            isPlaying={tl.isPlaying}
+            onSeek={tl.seek}
+            onPlayPause={() => tl.isPlaying ? tl.pause() : tl.play()}
+            onExit={handleExitZone}
+          />
+        ) : (
+          <Timeline currentDate={currentDate} onSeek={seek} />
+        )}
       </div>
 
       <ChartPanel
         open={panelOpen}
-        bubbleData={bubbleData}
-        illegalData={illegalData}
-        timeSeriesData={timeSeriesData}
+        bubbleData={charts.bubbleData}
+        illegalData={charts.illegalData}
+        timeSeriesData={charts.timeSeriesData}
+        zone={inZoneMode ? timelapseZone : null}
       />
     </div>
   )

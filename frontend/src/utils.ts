@@ -57,12 +57,6 @@ export function flagColor(flagIndex: number, value: number, max: number): [numbe
   ]
 }
 
-export function nextDay(date: string): string {
-  const d = new Date(date)
-  d.setDate(d.getDate() + 1)
-  return d.toISOString().slice(0, 10)
-}
-
 export function computeBBox(
   container: HTMLDivElement | null,
   viewState: MapViewState,
