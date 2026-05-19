@@ -21,7 +21,7 @@ const BODY_HEIGHT = MAX_BARS * ROW_H + (MAX_BARS - 1) * ROW_GAP
  * past MAX_ROWS countries is aggregated into a single "Other" bar so the bars
  * still read as a part-to-whole.
  */
-export default function BarChart({ data }: { data: BarItem[] }) {
+export default function BarChart({ data, timelapse }: { data: BarItem[]; timelapse?: boolean }) {
   const [hovered, setHovered] = useState<string | null>(null)
 
   // data arrives already sorted by value descending.
@@ -34,7 +34,9 @@ export default function BarChart({ data }: { data: BarItem[] }) {
   return (
     <ChartFrame
       title="Fishing Effort by Country"
-      subtitle="daily share of fishing hours · visible area"
+      subtitle={timelapse
+        ? 'yearly share of fishing hours · zone'
+        : 'daily share of fishing hours · visible area'}
       info="Share of total fishing hours by vessel flag state, for the selected day and the area currently visible on the map. Countries beyond the top 7 are grouped into a single 'Other' bar."
       empty={!data.length}
       bodyHeight={BODY_HEIGHT}

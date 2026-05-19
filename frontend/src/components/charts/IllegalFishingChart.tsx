@@ -38,7 +38,7 @@ function LegendKey({ color, label }: { color: string; label: string }) {
  * the total bar avoids the lollipop's trap where a flag with a few hours all in
  * foreign waters reads as a maxed-out "100%".
  */
-export default function IllegalFishingChart({ data }: { data: IllegalItem[] }) {
+export default function IllegalFishingChart({ data, timelapse }: { data: IllegalItem[]; timelapse?: boolean }) {
   const [hovered, setHovered] = useState<string | null>(null)
 
   // data arrives sorted by foreign-EEZ hours descending.
@@ -47,7 +47,9 @@ export default function IllegalFishingChart({ data }: { data: IllegalItem[] }) {
   return (
     <ChartFrame
       title="Foreign EEZ Fishing"
-      subtitle="daily fishing effort in foreign EEZ · top 5 countries"
+      subtitle={timelapse
+        ? 'yearly fishing effort in foreign EEZ · top 5 countries'
+        : 'daily fishing effort in foreign EEZ · top 5 countries'}
       info="For each country, the bar shows its total fishing effort for the selected day in the visible area. The red segment is the share carried out inside another country's Exclusive Economic Zone (EEZ). Fishing in a foreign EEZ may still be authorised under access agreements."
       empty={!data.length}
       bodyHeight={BODY_HEIGHT}

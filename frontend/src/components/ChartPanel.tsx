@@ -80,9 +80,9 @@ export default function ChartPanel({ open, bubbleData, illegalData, timeSeriesDa
       }}>
         {zone && <ZoneHeader zone={zone} />}
         {zone && <Divider />}
-        <BarChart data={bubbleData} />
+        <BarChart data={bubbleData} timelapse={!!zone} />
         <Divider />
-        <IllegalFishingChart data={illegalData} />
+        <IllegalFishingChart data={illegalData} timelapse={!!zone} />
         <Divider />
         <HeatmapChart data={timeSeriesData} />
       </div>
