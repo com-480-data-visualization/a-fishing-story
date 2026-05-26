@@ -187,3 +187,29 @@ data/parquet/
 | fleet-monthly | 5 | 67,420,531 | 524 MB |
 | mmsi-daily | 5 | 358,466,644 | 2.4 GB |
 | **Total** | **70** | **1,998,301,840** | **~14 GB** |
+
+---
+
+## Frontend-Ready Artifacts
+
+The Parquet files produced above are still too coarse-grained for the browser to fetch directly. A second stage, implemented in `notebooks/preprocessing.ipynb` and `notebooks/zone_timelapse.ipynb`, derives the files the frontend actually reads via DuckDB-WASM.
+
+All outputs land under `data/parquet/` and are uploaded to the HuggingFace dataset by `hf.py`.
+
+### `preprocessing.ipynb`
+
+Reads from `data/parquet/daily/fleet-daily-YYYY-MM.parquet` and produces:
+
+- **`timeseries_grid.parquet`** — monthly aggregate over a coarse spatial grid, used by the time-series chart. Single file, ~20–80 MB.
+- **`daily_split/fleet-daily-YYYY-MM-DD.parquet`** — one Parquet per day (~1825 files for 2020–2024), so the map only fetches the cells it needs for the selected day. Sorted by `(lat, lon)` with small row groups so DuckDB-WASM range requests stay tight. `UNKNOWN-<ISO>` flags are collapsed into `<ISO>` here.
+- **`eez_grid.parquet`** — pre-joined lookup mapping each grid cell to its EEZ (or High Seas), built from the Marine Regions shapefile under `data/World_EEZ_v12_20231025/`.
+
+### `zone_timelapse.ipynb`
+
+Builds the per-zone timelapse animations shown when a point of interest is clicked.
+
+- **`zones/<zone-id>-<year>.parquet`** — one Parquet per (zone, year). Zone ids are defined in `frontend/src/data/zones.ts`.
+
+### EEZ boundary layer
+
+- **`eez_boundaries.geojson`** — simplified EEZ polygons consumed directly by the deck.gl map. Derived from the Marine Regions shapefile (not produced by a notebook).
