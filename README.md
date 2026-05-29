@@ -4,6 +4,9 @@ Interactive web visualization of global fishing activity through a geopolitical 
 
 Live site: https://com-480-data-visualization.github.io/a-fishing-story/
 
+- **Process book:** [process-book.pdf](process-book.pdf)
+- **Screencast:** [screencast.mp4](screencast.mp4)
+
 Course project for COM-480. Earlier milestone write-ups are preserved in [README-M1-M2.md](README-M1-M2.md).
 
 ## Architecture
